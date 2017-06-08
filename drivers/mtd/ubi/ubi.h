@@ -975,6 +975,11 @@ int static inline ubi_fastmap_init_checkmap(struct ubi_volume *vol, int leb_coun
 static inline void ubi_fastmap_destroy_checkmap(struct ubi_volume *vol) {}
 #endif
 
+/* gluebi.c */
+#ifdef CONFIG_MTD_UBI_GLUEBI
+int gluebi_unregister (int ubi_num);
+#endif
+
 /* block.c */
 #ifdef CONFIG_MTD_UBI_BLOCK
 int ubiblock_init(void);
