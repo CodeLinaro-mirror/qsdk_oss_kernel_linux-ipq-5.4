@@ -1132,6 +1132,7 @@ static int ag71xx_rings_init(struct ag71xx *ag)
 	struct ag71xx_ring *tx = &ag->tx_ring;
 	struct ag71xx_ring *rx = &ag->rx_ring;
 	int ring_size, tx_size;
+	int ret;
 
 	ring_size = BIT(tx->order) + BIT(rx->order);
 	tx_size = BIT(tx->order);
@@ -1144,9 +1145,8 @@ static int ag71xx_rings_init(struct ag71xx *ag)
 					   ring_size * AG71XX_DESC_SIZE,
 					   &tx->descs_dma, GFP_KERNEL);
 	if (!tx->descs_cpu) {
-		kfree(tx->buf);
-		tx->buf = NULL;
-		return -ENOMEM;
+		ret = -ENOMEM;
+		goto err_free_buf;
 	}
 
 	rx->buf = &tx->buf[tx_size];
@@ -1154,7 +1154,21 @@ static int ag71xx_rings_init(struct ag71xx *ag)
 	rx->descs_dma = tx->descs_dma + tx_size * AG71XX_DESC_SIZE;
 
 	ag71xx_ring_tx_init(ag);
-	return ag71xx_ring_rx_init(ag);
+	ret = ag71xx_ring_rx_init(ag);
+	if (ret)
+		goto err_free_dma;
+
+	return 0;
+
+err_free_dma:
+	dma_free_coherent(&ag->pdev->dev, ring_size * AG71XX_DESC_SIZE,
+			  tx->descs_cpu, tx->descs_dma);
+	rx->buf = NULL;
+err_free_buf:
+	kfree(tx->buf);
+	tx->buf = NULL;
+
+	return ret;
 }
 
 static void ag71xx_rings_free(struct ag71xx *ag)
