@@ -1262,18 +1262,18 @@ static int ag71xx_open(struct net_device *ndev)
 
 	ret = ag71xx_hw_enable(ag);
 	if (ret)
-		goto err;
+		return ret;
 
 	ret = ag71xx_phy_connect(ag);
 	if (ret)
-		goto err;
+		goto err_hw_disable;
 
 	phy_start(ndev->phydev);
 
 	return 0;
 
-err:
-	ag71xx_rings_cleanup(ag);
+err_hw_disable:
+	ag71xx_hw_disable(ag);
 	return ret;
 }
 
