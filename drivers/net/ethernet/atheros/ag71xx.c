@@ -305,6 +305,10 @@ struct ag71xx {
 	u32 msg_enable;
 	const struct ag71xx_dcfg *dcfg;
 
+	unsigned int		link;
+	unsigned int		speed;
+	int			duplex;
+
 	/* From this point onwards we're not looking at per-packet fields. */
 	void __iomem *mac_base;
 
@@ -853,6 +857,7 @@ static void ag71xx_link_adjust(struct ag71xx *ag, bool update)
 
 	if (!phydev->link && update) {
 		ag71xx_hw_stop(ag);
+		phy_print_status(phydev);
 		return;
 	}
 
@@ -906,8 +911,25 @@ static void ag71xx_link_adjust(struct ag71xx *ag, bool update)
 static void ag71xx_phy_link_adjust(struct net_device *ndev)
 {
 	struct ag71xx *ag = netdev_priv(ndev);
+	struct phy_device *phydev = ndev->phydev;
+	int status_change = 0;
 
-	ag71xx_link_adjust(ag, true);
+	if (phydev->link) {
+		if (ag->duplex != phydev->duplex
+		    || ag->speed != phydev->speed) {
+			status_change = 1;
+		}
+	}
+
+	if (phydev->link != ag->link)
+		status_change = 1;
+
+	ag->link = phydev->link;
+	ag->duplex = phydev->duplex;
+	ag->speed = phydev->speed;
+
+	if (status_change)
+		ag71xx_link_adjust(ag, true);
 }
 
 static int ag71xx_phy_connect(struct ag71xx *ag)
