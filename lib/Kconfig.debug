@@ -758,6 +758,7 @@ config DEBUG_MEM_USAGE
 	bool "Track memory usage selectively"
 
 source "lib/Kconfig.kasan"
+source "lib/Kconfig.kfence"
 
 endmenu # "Memory Debugging"
 
