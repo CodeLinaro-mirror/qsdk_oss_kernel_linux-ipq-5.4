@@ -1181,8 +1181,8 @@ struct kmem_cache *kmalloc_slab(size_t size, gfp_t flags)
 
 /*
  * kmalloc_info[] is to make slub_debug=,kmalloc-xx option work at boot time.
- * kmalloc_index() supports up to 2^26=64MB, so the final entry of the table is
- * kmalloc-67108864.
+ * kmalloc_index() supports up to 2^25=32MB, so the final entry of the table is
+ * kmalloc-32M.
  */
 const struct kmalloc_info_struct kmalloc_info[] __initconst = {
 	{NULL,                      0},		{"kmalloc-96",             96},
@@ -1197,8 +1197,7 @@ const struct kmalloc_info_struct kmalloc_info[] __initconst = {
 	{"kmalloc-256k",       262144},		{"kmalloc-512k",       524288},
 	{"kmalloc-1M",        1048576},		{"kmalloc-2M",        2097152},
 	{"kmalloc-4M",        4194304},		{"kmalloc-8M",        8388608},
-	{"kmalloc-16M",      16777216},		{"kmalloc-32M",      33554432},
-	{"kmalloc-64M",      67108864}
+	{"kmalloc-16M",      16777216},		{"kmalloc-32M",      33554432}
 };
 
 /*
