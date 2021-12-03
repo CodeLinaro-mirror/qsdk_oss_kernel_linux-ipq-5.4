@@ -11,6 +11,7 @@
 #include <linux/hardirq.h>
 #include <linux/init.h>
 #include <linux/kprobes.h>
+#include <linux/kfence.h>
 #include <linux/uaccess.h>
 #include <linux/page-flags.h>
 #include <linux/sched/signal.h>
@@ -131,10 +132,14 @@ __do_kernel_fault(struct mm_struct *mm, unsigned long addr, unsigned int fsr,
 	/*
 	 * No handler, we'll have to terminate things with extreme prejudice.
 	 */
-	if (addr < PAGE_SIZE)
+	if (addr < PAGE_SIZE) {
 		msg = "NULL pointer dereference";
-	else
+	} else {
+		if (kfence_handle_page_fault(addr, is_write_fault(fsr), regs))
+			return;
+
 		msg = "paging request";
+	}
 
 	die_kernel_fault(msg, mm, addr, fsr, regs);
 }
