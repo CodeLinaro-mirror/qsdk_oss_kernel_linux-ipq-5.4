@@ -941,6 +941,13 @@ void *__kfence_alloc(struct kmem_cache *s, size_t size, gfp_t flags)
 		return NULL;
 	}
 
+	/*
+	 * Skip allocations for this slab, if KFENCE has been disabled for
+	 * this slab.
+	 */
+	if (s->flags & SLAB_SKIP_KFENCE)
+		return NULL;
+
 	allocation_gate = atomic_inc_return(&kfence_allocation_gate);
 	if (allocation_gate > 1)
 		return NULL;
