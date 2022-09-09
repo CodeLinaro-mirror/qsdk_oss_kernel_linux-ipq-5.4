@@ -65,7 +65,7 @@ int __init early_init_dt_reserve_memory_arch(phys_addr_t base,
 void __init __dt_setup_arch(void *bph)
 {
 	if (boot_command_line[0] == '\0')
-		strlcpy(boot_command_line, arcs_cmdline, sizeof(boot_command_line));
+		strlcpy(boot_command_line, arcs_cmdline, COMMAND_LINE_SIZE);
 
 	if (!early_init_dt_scan(bph))
 		return;
