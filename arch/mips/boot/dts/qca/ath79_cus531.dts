@@ -1,0 +1,106 @@
+// SPDX-License-Identifier: ISC
+/*
+ * Copyright (c) 2022, Qualcomm Innovation Center, Inc. All rights reserved.
+ */
+/dts-v1/;
+
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/input/input.h>
+#include <dt-bindings/clock/ath79-clk.h>
+
+#include "ath79.dtsi"
+
+/ {
+	compatible = "qca,cus531", "qca,ath79";
+	model = "QCA CUS531 Board";
+
+	aliases {
+		serial0 = "/ahb/apb/uart@18020000";
+	};
+
+	cpus {
+		cpu@0 {
+			clocks = <&pll ATH79_CLK_CPU>;
+		};
+	};
+
+	memory@0 {
+		device_type = "memory";
+		reg = <0x0 0x2000000>;
+	};
+
+	chosen {
+		bootargs = "board=CUS531-NAND console=ttyS0,115200 ubi.mtd=5,2048 root=/dev/mtdblock8 mtdparts=spi0.0:256k(u-boot)ro,64k(u-boot-env),128k(reserved),64k(art);spi0.1:2m(kernel),36m(rootfs),90m(data),38m@0x0d";
+	};
+
+	extosc: oscillator {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <25000000>;
+	};
+
+	cpuintc: interrupt-controller {
+		qca,ddr-wb-channel-interrupts = <3>;
+		qca,ddr-wb-channels = <&ddr_ctrl 0x2>;
+	};
+
+	ahb {
+		apb {
+			uart@18020000 {
+				status = "okay";
+			};
+
+			pll-controller@18050000 {
+				clocks = <&extosc>;
+			};
+
+			ip3_int: interrupt-controller@ip3_int {
+				status = "disabled";
+			};
+
+			pll: pll-controller@18050000 {
+				compatible = "qca,qca9530-pll";
+				reg = <0x18050000 0x20>;
+
+				clock-names = "ref";
+				/* The board must provides the ref clock */
+
+				#clock-cells = <1>;
+				#clock-output-names = "cpu", "ddr", "ahb";
+			};
+		};
+
+		spi_0: spi@1f000000 {
+			status = "disabled";
+		};
+	};
+
+	gpio-keys-polled {
+		compatible = "gpio-keys-polled";
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		poll-interval = <20>;
+
+		button@0 {
+			label = "WPS button";
+			linux,code = <KEY_WPS_BUTTON>;
+			gpios = <&gpio 17 GPIO_ACTIVE_LOW>;
+			debounce-interval = <60>;
+		};
+	};
+
+	leds {
+		compatible = "gpio-leds";
+		led@0 {
+			label = "cus531:green:status";
+			gpios = <&gpio 13 GPIO_ACTIVE_LOW>;
+		};
+
+		led@1 {
+			label = "cus531:green:wlan";
+			gpios = <&gpio 12 GPIO_ACTIVE_LOW>;
+		};
+
+	};
+};
