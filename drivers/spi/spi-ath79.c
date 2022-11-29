@@ -161,6 +161,8 @@ static int ath79_spi_probe(struct platform_device *pdev)
 		master->bus_num = pdata->bus_num;
 		master->num_chipselect = pdata->num_chipselect;
 	}
+	master->bus_num = 0;
+	master->num_chipselect = 3;
 
 	sp->bitbang.master = master;
 	sp->bitbang.chipselect = ath79_spi_chipselect;
