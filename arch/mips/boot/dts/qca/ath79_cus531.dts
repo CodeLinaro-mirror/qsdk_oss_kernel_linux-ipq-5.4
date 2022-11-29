@@ -30,7 +30,8 @@
 	};
 
 	chosen {
-		bootargs = "board=CUS531-NAND console=ttyS0,115200 ubi.mtd=5,2048 root=/dev/mtdblock8 mtdparts=spi0.0:256k(u-boot)ro,64k(u-boot-env),128k(reserved),64k(art);spi0.1:2m(kernel),36m(rootfs),90m(data),38m@0x0d";
+		bootargs = "board=CUS531-NAND console=ttyS0,115200 ubi.mtd=5,2048 root=/dev/mtdblock8 mtdparts=spi0.0:256k(u-boot)ro,64k(u-boot-env),128k(reserved),64k(art);spi0.1:2m(kernel),36m(rootfs),90m(data),38m@0x0(firmware) rootfstype=squashfs,jffs2 noinitrd mem=64M rootfstype=squashfs,jffs2 noinitrd loglevel=8 panic=10 initcall_debug=0";
+
 	};
 
 	extosc: oscillator {
@@ -71,7 +72,61 @@
 		};
 
 		spi_0: spi@1f000000 {
-			status = "disabled";
+			status = "okay";
+
+			flash@0 {
+				#address-cells = <1>;
+				#size-cells = <1>;
+				compatible = "n25q128a11";
+				linux,modalias = "jedec,spi-nor", "n25q128a11", "m25p80";
+				reg = <0>;
+				spi-max-frequency = <25000000>;
+
+				partition@0 {
+					label = "u-boot";
+					reg = <0x000000 0x040000>;
+				};
+
+				partition@1 {
+					label = "u-boot-env";
+					reg = <0x040000 0x010000>;
+				};
+
+				partition@2 {
+					label = "reserved";
+					reg = <0x050000 0x020000>;
+				};
+
+				partition@3 {
+					label = "art";
+					reg = <0x070000 0x0010000>;
+				};
+
+			};
+
+			flash@1 {
+				#address-cells = <1>;
+				#size-cells = <1>;
+				compatible = "spi-nand";
+				reg = <1>;
+				spi-max-frequency = <50000000>;
+				status = "okay";
+				/* cs-gpios = <&gpio 1 GPIO_ACTIVE_LOW>; */
+				partition@0 {
+					label = "kernel";
+					reg = <0x000000 0x200000>;
+				};
+
+				partition@1 {
+					label = "rootfs";
+					reg = <0x200000 0x2400000>;
+				};
+
+				partition@2 {
+					label = "data";
+					reg = <0x2600000 0x5a00000>;
+				};
+			};
 		};
 	};
 

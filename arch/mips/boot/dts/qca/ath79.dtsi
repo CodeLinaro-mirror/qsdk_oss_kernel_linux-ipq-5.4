@@ -53,7 +53,7 @@
 			};
 
 			uart@18020000 {
-				compatible = "ns16550A", "serial8250";
+				compatible = "ns16550a", "serial8250";
 				reg = <0x18020000 0x20>;
 				interrupts = <3>;
 				interrupt-parent = <&miscintc>;
