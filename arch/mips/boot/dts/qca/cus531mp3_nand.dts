@@ -1,0 +1,106 @@
+// SPDX-License-Identifier: ISC
+// Copyright (c) 2022, Qualcomm Innovation Center, Inc. All rights reserved.
+
+/dts-v1/;
+
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/input/input.h>
+#include <dt-bindings/clock/ath79-clk.h>
+
+#include "qca4531.dtsi"
+
+/ {
+	compatible = "qca,cus531mp3_nand", "qca,ath79";
+	model = "CUS531 MP3 nand reference board";
+
+	gpio-keys-polled {
+		compatible = "gpio-keys-polled";
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		poll-interval = <20>;
+
+		button@0 {
+			label = "WPS button";
+			linux,code = <KEY_WPS_BUTTON>;
+			gpios = <&gpio 17 GPIO_ACTIVE_LOW>;
+			debounce-interval = <60>;
+		};
+	};
+
+	leds {
+		compatible = "gpio-leds";
+		led@0 {
+			label = "cus531mp3:green:status";
+			gpios = <&gpio 13 GPIO_ACTIVE_LOW>;
+		};
+
+		led@1 {
+			label = "cus531mp3:green:wlan";
+			gpios = <&gpio 12 GPIO_ACTIVE_LOW>;
+		};
+
+	};
+};
+
+&spi {
+	status = "okay";
+
+	flash@0 {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		compatible = "jedec,spi-nor";
+		reg = <0>;
+		spi-max-frequency = <25000000>;
+		cs-gpios = <&gpio 0 GPIO_ACTIVE_LOW>;
+
+		partition@0 {
+			label = "u-boot";
+			reg = <0x000000 0x040000>;
+		};
+
+		partition@1 {
+			label = "u-boot-env";
+			reg = <0x040000 0x010000>;
+		};
+
+		partition@2 {
+			label = "reserved";
+			reg = <0x050000 0x020000>;
+		};
+
+		partition@3 {
+			label = "art";
+			reg = <0x070000 0x0010000>;
+		};
+	};
+
+	flash@1 {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		compatible = "spi-nand";
+		reg = <1>;
+		spi-max-frequency = <50000000>;
+
+		partition@0 {
+			label = "kernel";
+			reg = <0x000000 0x200000>;
+		};
+
+		partition@1 {
+			label = "rootfs";
+			reg = <0x200000 0x2400000>;
+		};
+
+		partition@2 {
+			label = "data";
+			reg = <0x2600000 0x5a00000>;
+		};
+
+		partition@3 {
+			label = "firmware";
+			reg = <0x0000000 0x2600000>;
+		};
+	};
+};
+
