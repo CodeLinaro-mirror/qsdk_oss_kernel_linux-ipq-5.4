@@ -10,8 +10,8 @@
 #include "qca4531.dtsi"
 
 / {
-	compatible = "qca,cus531_nand", "qca,ath79";
-	model = "CUS531 nand reference board";
+	compatible = "qca,cus531_16M", "qca,ath79";
+	model = "CUS531 reference board";
 
 	gpio-keys-polled {
 		compatible = "gpio-keys-polled";
@@ -53,14 +53,6 @@
 		reg = <0>;
 		spi-max-frequency = <25000000>;
 		cs-gpios = <&gpio 0 GPIO_ACTIVE_LOW>;
-	};
-
-	flash@1 {
-		#address-cells = <1>;
-		#size-cells = <1>;
-		compatible = "spi-nand";
-		reg = <1>;
-		spi-max-frequency = <50000000>;
 	};
 };
 

@@ -159,7 +159,6 @@
 					qca,int-status-addr = <0xac>;
 					qca,pending-bits = <0xf>,       /* wmac */
 							<0x1f0>;        /* pcie rc1 */
-					
 					qca,ddr-wb-channel-interrupts = <0>, <1>;
 					qca,ddr-wb-channels = <&ddr_ctrl 4>, <&ddr_ctrl 3>;
 				};
@@ -172,7 +171,7 @@
 			reg = <0x18070000 0x4>;
 		};
 
-		pcie0: pcie-controller@180c0000 {
+		pcie0: pcie@180c0000 {
 			compatible = "qcom,ar7240-pci";
 			#address-cells = <3>;
 			#size-cells = <2>;
