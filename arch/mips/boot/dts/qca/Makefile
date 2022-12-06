@@ -8,3 +8,5 @@ dtb-$(CONFIG_ATH79)			+= ar9331_tl_mr3020.dtb
 dtb-$(CONFIG_ATH79)			+= cus531_nand.dtb
 dtb-$(CONFIG_ATH79)			+= cus531mp3_nand.dtb
 dtb-$(CONFIG_ATH79)			+= cus532k_nand.dtb
+dtb-$(CONFIG_ATH79)			+= ap147ioe_nand.dtb
+dtb-$(CONFIG_ATH79)			+= ap147ioe_16M.dtb
