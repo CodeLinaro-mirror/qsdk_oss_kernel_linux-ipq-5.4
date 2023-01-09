@@ -51,6 +51,14 @@
 };
 
 
+&usb0 {
+	status = "okay";
+};
+
+&usb_phy {
+	status = "okay";
+};
+
 &spi {
 	status = "okay";
 	spi-bus-num = /bits/ 16 <0>;
