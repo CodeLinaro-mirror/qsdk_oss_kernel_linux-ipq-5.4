@@ -66,6 +66,9 @@
 	status = "okay";
 };
 
+&pcie0 {
+	status = "okay";
+};
 
 &spi {
 	status = "okay";
