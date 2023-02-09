@@ -74,3 +74,8 @@
 		spi-max-frequency = <50000000>;
 	};
 };
+
+&wmac {
+	status = "okay";
+	mtd-cal-data = <&art 0x1000>;
+};
