@@ -53,6 +53,17 @@
 		reg = <0>;
 		spi-max-frequency = <25000000>;
 		cs-gpios = <&gpio 0 GPIO_ACTIVE_LOW>;
+
+		partitions {
+			compatible = "fixed-partitions";
+			#address-cells = <1>;
+			#size-cells = <1>;
+			art: partition@70000 {
+				label = "art";
+				reg = <0x70000 0x010000>;
+				read-only;
+			};
+		};
 	};
 
 	flash@1 {
@@ -63,4 +74,3 @@
 		spi-max-frequency = <50000000>;
 	};
 };
-
