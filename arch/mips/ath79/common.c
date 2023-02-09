@@ -31,6 +31,7 @@ EXPORT_SYMBOL_GPL(ath79_ddr_freq);
 
 enum ath79_soc_type ath79_soc;
 unsigned int ath79_soc_rev;
+EXPORT_SYMBOL_GPL(ath79_soc_rev);
 
 void __iomem *ath79_pll_base;
 void __iomem *ath79_reset_base;
