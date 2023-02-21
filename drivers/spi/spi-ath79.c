@@ -19,6 +19,9 @@
 #include <linux/bitops.h>
 #include <linux/clk.h>
 #include <linux/err.h>
+#include <linux/of_net.h>
+#include <linux/of_address.h>
+#include <linux/of_platform.h>
 #include <linux/platform_data/spi-ath79.h>
 
 #define DRV_NAME	"ath79-spi"
@@ -36,6 +39,9 @@
 #define AR71XX_SPI_IOC_DO		BIT(0)	/* Data Out pin */
 #define AR71XX_SPI_IOC_CLK		BIT(8)	/* CLK pin */
 #define AR71XX_SPI_IOC_CS(n)		BIT(16 + (n))
+
+#define AR71XX_SPI_DEFAULT_BUS_NUM			0
+#define AR71XX_SPI_DEFAULT_BUSELECT_NUM		3
 
 struct ath79_spi {
 	struct spi_bitbang	bitbang;
@@ -136,6 +142,7 @@ static u32 ath79_spi_txrx_mode0(struct spi_device *spi, unsigned int nsecs,
 
 static int ath79_spi_probe(struct platform_device *pdev)
 {
+	struct device_node *np = pdev->dev.of_node;
 	struct spi_master *master;
 	struct ath79_spi *sp;
 	struct ath79_spi_platform_data *pdata;
@@ -160,9 +167,16 @@ static int ath79_spi_probe(struct platform_device *pdev)
 	if (pdata) {
 		master->bus_num = pdata->bus_num;
 		master->num_chipselect = pdata->num_chipselect;
+	} else {
+		if (of_property_read_u16(np, "spi-bus-num", &master->bus_num)) {
+			dev_dbg(&pdev->dev, "no dts property for spi bus num\n");
+			master->bus_num = AR71XX_SPI_DEFAULT_BUS_NUM;
+		}
+		if (of_property_read_u16(np, "spi-chipselect", &master->num_chipselect)) {
+			dev_dbg(&pdev->dev, "no dts property for spi bus select num\n");
+			master->num_chipselect = AR71XX_SPI_DEFAULT_BUSELECT_NUM;
+		}
 	}
-	master->bus_num = 0;
-	master->num_chipselect = 3;
 
 	sp->bitbang.master = master;
 	sp->bitbang.chipselect = ath79_spi_chipselect;

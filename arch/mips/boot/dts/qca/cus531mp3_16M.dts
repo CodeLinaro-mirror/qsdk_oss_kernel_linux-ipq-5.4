@@ -45,6 +45,8 @@
 
 &spi {
 	status = "okay";
+	spi-bus-num = /bits/ 16 <0>;
+	spi-chipselect = /bits/ 16 <3>;
 
 	flash@0 {
 		#address-cells = <1>;
