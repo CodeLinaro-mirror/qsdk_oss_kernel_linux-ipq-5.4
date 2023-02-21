@@ -23,7 +23,7 @@
 		button@0 {
 			label = "WPS button";
 			linux,code = <KEY_WPS_BUTTON>;
-			gpios = <&gpio 17 GPIO_ACTIVE_LOW>;
+			gpios = <&gpio 14 GPIO_ACTIVE_LOW>;
 			debounce-interval = <60>;
 		};
 	};
@@ -41,7 +41,15 @@
 		};
 
 	};
+
+	i2c {
+		compatible = "i2c-gpio";
+		gpios = <&gpio 17 GPIO_ACTIVE_HIGH /* sda */
+			 &gpio 16 GPIO_ACTIVE_HIGH /* scl */
+			>;
+	};
 };
+
 
 &spi {
 	status = "okay";
