@@ -7,6 +7,8 @@ Required properties:
 - clock-names: has to be "ahb".
 - #address-cells: <1>, as required by generic SPI binding.
 - #size-cells: <0>, also as required by generic SPI binding.
+- spi-bus-num: bus number of selected spi interface.
+- spi-chipselect: chipselect number of selected spi interface.
 
 Child nodes as per the generic SPI binding.
 
@@ -15,6 +17,9 @@ Example:
 	spi@1f000000 {
 		compatible = "qca,ar9132-spi", "qca,ar7100-spi";
 		reg = <0x1f000000 0x10>;
+
+		spi-bus-num = /bits/ 16 <0>;
+		spi-chipselect = /bits/ 16 <3>;
 
 		clocks = <&pll 2>;
 		clock-names = "ahb";
