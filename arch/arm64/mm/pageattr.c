@@ -7,10 +7,12 @@
 #include <linux/module.h>
 #include <linux/sched.h>
 #include <linux/vmalloc.h>
+#include <linux/kfence.h>
 
 #include <asm/pgtable.h>
 #include <asm/set_memory.h>
 #include <asm/tlbflush.h>
+#include <asm/kfence.h>
 
 struct page_change_data {
 	pgprot_t set_mask;
@@ -155,7 +157,7 @@ int set_direct_map_invalid_noflush(struct page *page)
 		.clear_mask = __pgprot(PTE_VALID),
 	};
 
-	if (!rodata_full)
+	if (!rodata_full && !arm64_kfence_can_set_direct_map())
 		return 0;
 
 	return apply_to_page_range(&init_mm,
@@ -170,7 +172,7 @@ int set_direct_map_default_noflush(struct page *page)
 		.clear_mask = __pgprot(PTE_RDONLY),
 	};
 
-	if (!rodata_full)
+	if (!rodata_full && !arm64_kfence_can_set_direct_map())
 		return 0;
 
 	return apply_to_page_range(&init_mm,
@@ -180,7 +182,7 @@ int set_direct_map_default_noflush(struct page *page)
 
 void __kernel_map_pages(struct page *page, int numpages, int enable)
 {
-	if (!debug_pagealloc_enabled() && !rodata_full)
+	if (!debug_pagealloc_enabled() && !rodata_full && !arm64_kfence_can_set_direct_map())
 		return;
 
 	set_memory_valid((unsigned long)page_address(page), numpages, enable);
