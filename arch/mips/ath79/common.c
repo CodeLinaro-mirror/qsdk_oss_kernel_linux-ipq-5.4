@@ -36,7 +36,8 @@ EXPORT_SYMBOL_GPL(ath79_soc_rev);
 void __iomem *ath79_pll_base;
 void __iomem *ath79_reset_base;
 EXPORT_SYMBOL_GPL(ath79_reset_base);
-static void __iomem *ath79_ddr_base;
+void __iomem *ath79_ddr_base;
+EXPORT_SYMBOL_GPL(ath79_ddr_base);
 static void __iomem *ath79_ddr_wb_flush_base;
 static void __iomem *ath79_ddr_pci_win_base;
 
