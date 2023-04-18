@@ -22,7 +22,6 @@
 #include <linux/of_net.h>
 #include <linux/of_address.h>
 #include <linux/of_platform.h>
-#include <linux/platform_data/spi-ath79.h>
 
 #define DRV_NAME	"ath79-spi"
 
@@ -145,7 +144,6 @@ static int ath79_spi_probe(struct platform_device *pdev)
 	struct device_node *np = pdev->dev.of_node;
 	struct spi_master *master;
 	struct ath79_spi *sp;
-	struct ath79_spi_platform_data *pdata;
 	unsigned long rate;
 	int ret;
 
@@ -159,23 +157,16 @@ static int ath79_spi_probe(struct platform_device *pdev)
 	master->dev.of_node = pdev->dev.of_node;
 	platform_set_drvdata(pdev, sp);
 
-	pdata = dev_get_platdata(&pdev->dev);
-
 	master->use_gpio_descriptors = true;
 	master->bits_per_word_mask = SPI_BPW_RANGE_MASK(1, 32);
 	master->flags = SPI_MASTER_GPIO_SS;
-	if (pdata) {
-		master->bus_num = pdata->bus_num;
-		master->num_chipselect = pdata->num_chipselect;
-	} else {
-		if (of_property_read_u16(np, "spi-bus-num", &master->bus_num)) {
-			dev_dbg(&pdev->dev, "no dts property for spi bus num\n");
-			master->bus_num = AR71XX_SPI_DEFAULT_BUS_NUM;
-		}
-		if (of_property_read_u16(np, "spi-chipselect", &master->num_chipselect)) {
-			dev_dbg(&pdev->dev, "no dts property for spi bus select num\n");
-			master->num_chipselect = AR71XX_SPI_DEFAULT_BUSELECT_NUM;
-		}
+	if (of_property_read_u16(np, "spi-bus-num", &master->bus_num)) {
+		dev_dbg(&pdev->dev, "no dts property for spi bus num\n");
+		master->bus_num = AR71XX_SPI_DEFAULT_BUS_NUM;
+	}
+	if (of_property_read_u16(np, "spi-chipselect", &master->num_chipselect)) {
+		dev_dbg(&pdev->dev, "no dts property for spi bus select num\n");
+		master->num_chipselect = AR71XX_SPI_DEFAULT_BUSELECT_NUM;
 	}
 
 	sp->bitbang.master = master;
