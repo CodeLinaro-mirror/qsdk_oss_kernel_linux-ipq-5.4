@@ -20,7 +20,6 @@
 #include <linux/module.h>
 #include <linux/init.h>
 #include <linux/types.h>
-#include <linux/proc_fs.h>
 #include <linux/random.h>
 #include <linux/spinlock.h>
 #include <linux/interrupt.h>
@@ -32,20 +31,20 @@
 #include <linux/skbuff.h>
 #include <linux/dma-mapping.h>
 #include <linux/workqueue.h>
-#include <linux/prefetch.h>
+#include <linux/reset.h>
+#include <linux/of.h>
+#include <linux/mfd/syscon.h>
+#include <linux/regmap.h>
 
 #include <linux/bitops.h>
 
 #include <asm/mach-ath79/ar71xx_regs.h>
 #include <asm/mach-ath79/ath79.h>
-#include <asm/mach-ath79/ag71xx_platform.h>
 
 #define AG71XX_DRV_NAME		"ag71xx"
-#define AG71XX_DRV_VERSION	"0.5.35"
 
-#define AR7240_NUM_PHYS        5
-
-/* For our NAPI weight bigger does *NOT* mean better - it means more
+/*
+ * For our NAPI weight bigger does *NOT* mean better - it means more
  * D-cache misses and lots more wasted cycles than we'll ever
  * possibly gain from saving instructions.
  */
@@ -60,24 +59,15 @@
 #define AG71XX_INT_INIT	(AG71XX_INT_ERR | AG71XX_INT_POLL)
 
 #define AG71XX_TX_MTU_LEN	1540
-#define AG71XX_RX_PKT_SIZE	\
-	(ETH_FRAME_LEN + ETH_FCS_LEN + VLAN_HLEN)
-#define AG71XX_RX_BUF_SIZE (AG71XX_RX_PKT_SIZE + NET_SKB_PAD + NET_IP_ALIGN)
 
-/* The 802.11n driver circa 10.1.389 requires a significant amount of headroom
- * to avoid reallocating and copying when transmitting a buffer.  This causes
- * this driver to pre-allocate enough headroom to avoid the reallocation later.
- */
-#define AG71XX_HACK_WIFI_HEADROOM	128
-
+#define AG71XX_TX_RING_SPLIT		512
+#define AG71XX_TX_RING_DS_PER_PKT	DIV_ROUND_UP(AG71XX_TX_MTU_LEN, \
+						     AG71XX_TX_RING_SPLIT)
 #define AG71XX_TX_RING_SIZE_DEFAULT	128
-#define AG71XX_RX_RING_SIZE_DEFAULT	224
+#define AG71XX_RX_RING_SIZE_DEFAULT	256
 
-#define AG71XX_TX_RING_SIZE_MAX		256
+#define AG71XX_TX_RING_SIZE_MAX		128
 #define AG71XX_RX_RING_SIZE_MAX		256
-
-#define AG71XX_JUMBO_LEN		9000
-#define DESC_JUMBO_PKTLEN_M		0x3FFF
 
 #ifdef CONFIG_AG71XX_DEBUG
 #define DBG(fmt, args...)	pr_debug(fmt, ## args)
@@ -94,47 +84,37 @@ do {									\
 } while (0)
 
 struct ag71xx_desc {
-	volatile u32	data;
-	volatile u32	ctrl;
+	u32	data;
+	u32	ctrl;
 #define DESC_EMPTY	BIT(31)
 #define DESC_MORE	BIT(24)
 #define DESC_PKTLEN_M	0xfff
-	volatile u32	next;
-	volatile u32	pad;
+	u32	next;
+	u32	pad;
 } __attribute__((aligned(4)));
 
+#define AG71XX_DESC_SIZE	roundup(sizeof(struct ag71xx_desc), \
+					L1_CACHE_BYTES)
+
 struct ag71xx_buf {
-	struct sk_buff		*skb;
-	struct ag71xx_desc	*desc;
-	struct ag71xx_buf	*next;
 	union {
-		u16		len;
+		struct sk_buff	*skb;
+		void		*rx_buf;
+	};
+	union {
 		dma_addr_t	dma_addr;
+		unsigned int		len;
 	};
 };
 
- /* RX or TX descriptor ring. */
 struct ag71xx_ring {
-	/* "Hot" fields in the data path. */
-	struct ag71xx_buf	*curr;
-	struct ag71xx_buf	*dirty;
-	u16		size;
-	u16		used;
-
-	/* "Cold" fields - not used in the data path. */
 	struct ag71xx_buf	*buf;
-	u16		mask;
-	u16		desc_size;
 	u8			*descs_cpu;
 	dma_addr_t		descs_dma;
-	void __iomem		*iomem;
-};
-
-struct ag71xx_mdio {
-	struct mii_bus		*mii_bus;
-	int			mii_irq[PHY_MAX_ADDR];
-	void __iomem		*mdio_base;
-	struct ag71xx_mdio_platform_data *pdata;
+	u16			desc_split;
+	u16			order;
+	unsigned int		curr;
+	unsigned int		dirty;
 };
 
 struct ag71xx_int_stats {
@@ -168,70 +148,86 @@ struct ag71xx_debug {
 };
 
 struct ag71xx {
-	/* Critical data related to the per-packet data path are clustered
+	/*
+	 * Critical data related to the per-packet data path are clustered
 	 * early in this structure to help improve the D-cache footprint.
 	 */
 	struct ag71xx_ring	rx_ring ____cacheline_aligned;
 	struct ag71xx_ring	tx_ring ____cacheline_aligned;
 
-	void __iomem		*rx_ctrl_reg;
-	void __iomem		*rx_status_reg;
-	void __iomem		*tx_ctrl_reg;
-	void __iomem		*tx_status_reg;
-	void __iomem		*int_status_reg;
+	int			mac_idx;
 
-	unsigned int		rx_buf_offset;
-	unsigned int		rx_buf_size;
+	u16			desc_pktlen_mask;
+	u16			rx_buf_size;
+	u8			rx_buf_offset;
+	u8			tx_hang_workaround:1;
 
 	struct net_device	*dev;
-	struct platform_device	*pdev;
-	/* Serialises access to regs */
+	struct platform_device  *pdev;
 	spinlock_t		lock;
 	struct napi_struct	napi;
-	unsigned int		gmac_num;
-
-	/* From this point onwards we're not looking at per-packet fields. */
-	struct ag71xx_buf	*ring_bufs;
-	void __iomem		*mac_base;
-	void __iomem		*sgmii_base;
-	void __iomem		*pll_base;
 	u32			msg_enable;
+
+	/*
+	 * From this point onwards we're not looking at per-packet fields.
+	 */
+	void __iomem		*mac_base;
+	void __iomem		*mii_base;
 
 	struct ag71xx_desc	*stop_desc;
 	dma_addr_t		stop_desc_dma;
 
-	bool			tx_stopped;
-
-	struct mii_bus		*mii_bus;
 	struct phy_device	*phy_dev;
 	void			*phy_priv;
+	int			phy_if_mode;
 
 	unsigned int		link;
 	unsigned int		speed;
 	int			duplex;
 
-	struct work_struct	restart_work;
-	struct delayed_work	link_work;
+	struct delayed_work	restart_work;
+	struct timer_list	oom_timer;
+
+	struct reset_control *mac_reset;
+	struct reset_control *mdio_reset;
+
+	u32			fifodata[3];
+	u32			plldata[3];
+	u32			pllreg[3];
+	struct regmap		*pllregmap;
 
 #ifdef CONFIG_AG71XX_DEBUG_FS
 	struct ag71xx_debug	debug;
 #endif
 };
 
+struct ag71xx_mdio {
+	struct reset_control *mdio_reset;
+	struct mii_bus		*mii_bus;
+	struct regmap		*mii_regmap;
+};
+
 extern struct ethtool_ops ag71xx_ethtool_ops;
 void ag71xx_link_adjust(struct ag71xx *ag);
 
-int ag71xx_mdio_driver_init(void) __init;
-void ag71xx_mdio_driver_exit(void);
-
 int ag71xx_phy_connect(struct ag71xx *ag);
 void ag71xx_phy_disconnect(struct ag71xx *ag);
-void ag71xx_phy_start(struct ag71xx *ag);
-void ag71xx_phy_stop(struct ag71xx *ag);
 
-static inline struct ag71xx_platform_data *ag71xx_get_pdata(struct ag71xx *ag)
+static inline int ag71xx_desc_empty(struct ag71xx_desc *desc)
 {
-	return ag->pdev->dev.platform_data;
+	return (desc->ctrl & DESC_EMPTY) != 0;
+}
+
+static inline struct ag71xx_desc *
+ag71xx_ring_desc(struct ag71xx_ring *ring, int idx)
+{
+	return (struct ag71xx_desc *) &ring->descs_cpu[idx * AG71XX_DESC_SIZE];
+}
+
+static inline int
+ag71xx_ring_size_order(int size)
+{
+	return fls(size - 1);
 }
 
 /* Register offsets */
@@ -273,17 +269,9 @@ static inline struct ag71xx_platform_data *ag71xx_get_pdata(struct ag71xx *ag)
 #define AG71XX_REG_INT_ENABLE	0x0198
 #define AG71XX_REG_INT_STATUS	0x019c
 
-#define AG71XX_REG_FIFO_THRESH	0x01a4
 #define AG71XX_REG_FIFO_DEPTH	0x01a8
 #define AG71XX_REG_RX_SM	0x01b0
 #define AG71XX_REG_TX_SM	0x01b4
-
-#define AG71XX_REG_IG_ACL	0x23c
-#define AG71XX_IG_ACL_FRA_DISABLE	0x60000000
-
-#define AG71XX_CFG_3_HD_VAL	0x00f00040
-#define AG71XX_FIFO_TH_HD_HALF_VAL	0x00880060
-#define AG71XX_FIFO_TH_HD_FULL_VAL	0x01d80160
 
 #define MAC_CFG1_TXE		BIT(0)	/* Tx Enable */
 #define MAC_CFG1_STX		BIT(1)	/* Synchronize Tx Enable */
@@ -384,9 +372,6 @@ static inline struct ag71xx_platform_data *ag71xx_get_pdata(struct ag71xx *ag)
 #define MII_IND_BUSY		BIT(0)
 #define MII_IND_INVALID		BIT(2)
 
-#define MII_PHY_SPEC_STATUS	0x11
-#define MII_PHY_LINK_STATUS	BIT(10)
-
 #define TX_CTRL_TXE		BIT(0)	/* Tx Enable */
 
 #define TX_STATUS_PS		BIT(0)	/* Packet Sent */
@@ -399,157 +384,36 @@ static inline struct ag71xx_platform_data *ag71xx_get_pdata(struct ag71xx *ag)
 #define RX_STATUS_OF		BIT(2)	/* Rx Overflow */
 #define RX_STATUS_BE		BIT(3)	/* Bus Error */
 
-typedef enum {
-	AG71XX_SGMII_SPEED_10T = 0,
-	AG71XX_SGMII_SPEED_100T,
-	AG71XX_SGMII_SPEED_1000T,
-} ag71xx_sgmii_speed_t;
-
-typedef enum {
-	AG71XX_SGMII_HALF_DUPLEX = 0,
-	AG71XX_SGMII_FULL_DUPLEX,
-} ag71xx_sgmii_duplex_t;
-
-#define SGMII_PHY_MGMT_CTRL   0x1c
-#define SGMII_SPEED_SEL1_SET(x)    (x << 6)
-#define SGMII_SPEED_SEL0_SET(x)    (x << 13)
-#define SGMII_PHY_RESET_SET(x)    (x << 15)
-#define SGMII_DUPLEX_SET(x)         (x << 8)
-
-#define SGMII_CONFIG   0x34
-#define SGMII_MODE_CTRL_SET(x)   (x)
-#define SGMII_FORCE_SPEED_SET(x)   (x << 5)
-#define SGMII_SPEED_SET(x)   (x << 6)
-
-#define SGMII_RESET		0x14
-#define SGMII_RX_CLK_N	BIT(0)
-#define SGMII_TX_CLK_N	BIT(1)
-#define SGMII_RX_125M	BIT(2)
-#define SGMII_TX_125M	BIT(3)
-#define SGMII_HW_RX_125M	BIT(4)
-
-#define SGMII_DEBUG  0x58
-#define SGMII_LINK_MAX_TRY 10
-
-#define AG71XX_PLL_SGMII  0x48
-#define AG71XX_PLL_GIGE  BIT(24)
-#define AG71XX_PLL_GIGE_CLK  BIT(25)
-#define AG71XX_PLL_100 0x101
-#define AG71XX_PLL_10 0x1313
-
-#define AG71XX_INTF_CTRL_SPEED			BIT(16)
-
-#define AG71XX_MAC0_OFFSET		0
-#define AG71XX_MAC1_OFFSET		6
-
-static inline void ag71xx_check_reg_offset(struct ag71xx *ag, unsigned reg)
-{
-	switch (reg) {
-	case AG71XX_REG_MAC_CFG1 ... AG71XX_REG_MAC_MFL:
-	case AG71XX_REG_MAC_IFCTL ... AG71XX_REG_TX_SM:
-	case AG71XX_REG_MII_CFG:
-		break;
-
-	default:
-		BUG();
-	}
-}
-
-static inline void ag71xx_wr_fast(void  __iomem *r, u32 value)
-{
-	__raw_writel(value, r);
-}
-
-static inline void ag71xx_wr_flush(void  __iomem *r)
-{
-	(void)__raw_readl(r);
-}
-
 static inline void ag71xx_wr(struct ag71xx *ag, unsigned reg, u32 value)
 {
-	void __iomem *r;
-
-	ag71xx_check_reg_offset(ag, reg);
-
-	r = ag->mac_base + reg;
-	__raw_writel(value, r);
+	__raw_writel(value, ag->mac_base + reg);
 	/* flush write */
-	(void)__raw_readl(r);
-}
-
-static inline void ag71xx_sgmii_wr(struct ag71xx *ag, unsigned reg, u32 value)
-{
-	void __iomem *r;
-
-	r = ag->sgmii_base + reg;
-	__raw_writel(value, r);
-	/* flush write */
-	(void)__raw_readl(r);
-}
-
-static inline void ag71xx_pll_wr(struct ag71xx *ag, unsigned reg, u32 value)
-{
-	void __iomem *r;
-
-	r = ag->pll_base + reg;
-	__raw_writel(value, r);
-	/* flush write */
-	(void)__raw_readl(r);
-}
-
-static inline u32 ag71xx_rr_fast(void  __iomem *r)
-{
-	return __raw_readl(r);
-}
-
-static inline u32 ag71xx_pll_rr(struct ag71xx *ag, unsigned reg)
-{
-	void __iomem *r;
-
-	r = ag->pll_base + reg;
-	return __raw_readl(r);
-}
-
-static inline u32 ag71xx_sgmii_rr(struct ag71xx *ag, unsigned reg)
-{
-	void __iomem *r;
-
-	r = ag->sgmii_base + reg;
-	return __raw_readl(r);
+	(void) __raw_readl(ag->mac_base + reg);
 }
 
 static inline u32 ag71xx_rr(struct ag71xx *ag, unsigned reg)
 {
-	void __iomem *r;
-
-	ag71xx_check_reg_offset(ag, reg);
-
-	r = ag->mac_base + reg;
-	return __raw_readl(r);
+	return __raw_readl(ag->mac_base + reg);
 }
 
 static inline void ag71xx_sb(struct ag71xx *ag, unsigned reg, u32 mask)
 {
 	void __iomem *r;
 
-	ag71xx_check_reg_offset(ag, reg);
-
 	r = ag->mac_base + reg;
 	__raw_writel(__raw_readl(r) | mask, r);
 	/* flush write */
-	(void)__raw_readl(r);
+	(void) __raw_readl(r);
 }
 
 static inline void ag71xx_cb(struct ag71xx *ag, unsigned reg, u32 mask)
 {
 	void __iomem *r;
 
-	ag71xx_check_reg_offset(ag, reg);
-
 	r = ag->mac_base + reg;
 	__raw_writel(__raw_readl(r) & ~mask, r);
 	/* flush write */
-	(void)__raw_readl(r);
+	(void) __raw_readl(r);
 }
 
 static inline void ag71xx_int_enable(struct ag71xx *ag, u32 ints)
@@ -561,32 +425,6 @@ static inline void ag71xx_int_disable(struct ag71xx *ag, u32 ints)
 {
 	ag71xx_cb(ag, AG71XX_REG_INT_ENABLE, ints);
 }
-
-#ifdef CONFIG_AG71XX_AR8216_SUPPORT
-void ag71xx_add_ar8216_header(struct ag71xx *ag, struct sk_buff *skb);
-int ag71xx_remove_ar8216_header(struct ag71xx *ag, struct sk_buff *skb,
-				int pktlen);
-static inline int ag71xx_has_ar8216(struct ag71xx *ag)
-{
-	return ag71xx_get_pdata(ag)->has_ar8216;
-}
-#else
-static inline void ag71xx_add_ar8216_header(struct ag71xx *ag,
-					   struct sk_buff *skb)
-{
-}
-
-static inline int ag71xx_remove_ar8216_header(struct ag71xx *ag,
-					      struct sk_buff *skb,
-					      int pktlen)
-{
-	return 0;
-}
-static inline int ag71xx_has_ar8216(struct ag71xx *ag)
-{
-	return 0;
-}
-#endif
 
 #ifdef CONFIG_AG71XX_DEBUG_FS
 int ag71xx_debugfs_root_init(void);
@@ -606,29 +444,12 @@ static inline void ag71xx_debugfs_update_napi_stats(struct ag71xx *ag,
 						    int rx, int tx) {}
 #endif /* CONFIG_AG71XX_DEBUG_FS */
 
-void ag71xx_ar7240_start(struct ag71xx *ag);
-void ag71xx_ar7240_stop(struct ag71xx *ag);
-int ag71xx_ar7240_init(struct ag71xx *ag);
+int ag71xx_ar7240_init(struct ag71xx *ag, struct device_node *np);
 void ag71xx_ar7240_cleanup(struct ag71xx *ag);
 
-int ag71xx_mdio_mii_read(struct ag71xx_mdio *am, int addr, int reg);
-void ag71xx_mdio_mii_write(struct ag71xx_mdio *am, int addr, int reg, u16 val);
+int ag71xx_setup_gmac(struct device_node *np);
 
-u16 ar7240sw_phy_read(struct mii_bus *mii, unsigned phy_addr,
-		      unsigned reg_addr);
-int ar7240sw_phy_write(struct mii_bus *mii, unsigned phy_addr,
-		       unsigned reg_addr, u16 reg_val);
-void ag71xx_sgmii_flag_set(u8 flag);
-u8 ag71xx_sgmii_flag_get(void);
-void ag71xx_sgmii_set_link(
-	struct ag71xx *ag, ag71xx_sgmii_speed_t speed,
-	ag71xx_sgmii_duplex_t duplex);
-void ag71xx_sgmii_get_link(
-	struct ag71xx *ag, ag71xx_sgmii_speed_t *speed,
-	ag71xx_sgmii_duplex_t *duplex);
-
-typedef int (*port_link_notify_func)(unsigned char port_id,
-		unsigned char link, unsigned char speed, unsigned char duplex);
-void ar7240_port_link_notify_register(port_link_notify_func func);
+int ar7240sw_phy_read(struct mii_bus *mii, int addr, int reg);
+int ar7240sw_phy_write(struct mii_bus *mii, int addr, int reg, u16 val);
 
 #endif /* _AG71XX_H */

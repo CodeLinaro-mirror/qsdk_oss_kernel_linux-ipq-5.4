@@ -12,16 +12,12 @@
  *  by the Free Software Foundation.
  */
 
+#include <linux/of_mdio.h>
 #include "ag71xx.h"
-
-
-//#define CONFIG_QCA_FULLOFFLOAD
-
 
 static void ag71xx_phy_link_adjust(struct net_device *dev)
 {
 	struct ag71xx *ag = netdev_priv(dev);
-	struct ag71xx_platform_data *pdata = ag71xx_get_pdata(ag);
 	struct phy_device *phydev = ag->phy_dev;
 	unsigned long flags;
 	int status_change = 0;
@@ -38,15 +34,9 @@ static void ag71xx_phy_link_adjust(struct net_device *dev)
 	if (phydev->link != ag->link)
 		status_change = 1;
 
-	if (pdata->force_link) {
-		ag->link = 1;
-		ag->duplex = pdata->duplex;
-		ag->speed = pdata->speed;
-	} else {
-		ag->link = phydev->link;
-		ag->duplex = phydev->duplex;
-		ag->speed = phydev->speed;
-	}
+	ag->link = phydev->link;
+	ag->duplex = phydev->duplex;
+	ag->speed = phydev->speed;
 
 	if (status_change)
 		ag71xx_link_adjust(ag);
@@ -54,201 +44,50 @@ static void ag71xx_phy_link_adjust(struct net_device *dev)
 	spin_unlock_irqrestore(&ag->lock, flags);
 }
 
-void ag71xx_phy_start(struct ag71xx *ag)
+int ag71xx_phy_connect(struct ag71xx *ag)
 {
-	struct ag71xx_platform_data *pdata = ag71xx_get_pdata(ag);
+	struct device_node *np = ag->pdev->dev.of_node;
+	struct device_node *phy_node;
+	int ret;
 
-	if (ag->phy_dev) {
-		phy_start(ag->phy_dev);
-	} else if (pdata->mii_bus_dev && pdata->switch_data) {
-		ag71xx_ar7240_start(ag);
+	if (of_phy_is_fixed_link(np)) {
+		ret = of_phy_register_fixed_link(np);
+		if (ret < 0) {
+			dev_err(&ag->pdev->dev,
+				"Failed to register fixed PHY link: %d\n", ret);
+			return ret;
+		}
+
+		phy_node = of_node_get(np);
 	} else {
-		ag->link = 1;
-		ag71xx_link_adjust(ag);
-	}
-}
-
-void ag71xx_phy_stop(struct ag71xx *ag)
-{
-	struct ag71xx_platform_data *pdata = ag71xx_get_pdata(ag);
-	unsigned long flags;
-
-	if (ag->phy_dev)
-		phy_stop(ag->phy_dev);
-	else if (pdata->mii_bus_dev && pdata->switch_data)
-		ag71xx_ar7240_stop(ag);
-
-	spin_lock_irqsave(&ag->lock, flags);
-	if (ag->link) {
-		ag->link = 0;
-		ag71xx_link_adjust(ag);
-	}
-	spin_unlock_irqrestore(&ag->lock, flags);
-}
-
-static int ag71xx_phy_connect_fixed(struct ag71xx *ag)
-{
-	struct device *dev = &ag->pdev->dev;
-	struct ag71xx_platform_data *pdata = ag71xx_get_pdata(ag);
-	int ret = 0;
-
-	/* use fixed settings */
-	switch (pdata->speed) {
-	case SPEED_10:
-	case SPEED_100:
-	case SPEED_1000:
-		break;
-	default:
-		dev_err(dev, "invalid speed specified\n");
-		ret = -EINVAL;
-		break;
+		phy_node = of_parse_phandle(np, "phy-handle", 0);
 	}
 
-	dev_dbg(dev, "using fixed link parameters\n");
-
-	ag->duplex = pdata->duplex;
-	ag->speed = pdata->speed;
-
-	return ret;
-}
-
-static int ag71xx_phy_connect_multi(struct ag71xx *ag)
-{
-	struct device *dev = &ag->pdev->dev;
-	struct ag71xx_platform_data *pdata = ag71xx_get_pdata(ag);
-	struct phy_device *phydev = NULL;
-	int phy_addr;
-	int ret = 0;
-
-	for (phy_addr = 0; phy_addr < PHY_MAX_ADDR; phy_addr++) {
-		if (!(pdata->phy_mask & (1 << phy_addr)))
-			continue;
-
-		if (ag->mii_bus->phy_map[phy_addr] == NULL)
-			continue;
-
-		DBG("%s: PHY found at %s, uid=%08x\n",
-			dev_name(dev),
-			dev_name(&ag->mii_bus->phy_map[phy_addr]->dev),
-			ag->mii_bus->phy_map[phy_addr]->phy_id);
-
-		if (phydev == NULL)
-			phydev = ag->mii_bus->phy_map[phy_addr];
-	}
-
-	if (!phydev) {
-		dev_err(dev, "no PHY found with phy_mask=%08x\n",
-			   pdata->phy_mask);
+	if (!phy_node) {
+		dev_err(&ag->pdev->dev,
+			"Could not find valid phy node\n");
 		return -ENODEV;
 	}
 
-	ag->phy_dev = phy_connect(ag->dev, dev_name(&phydev->dev),
-				  &ag71xx_phy_link_adjust,
-				  pdata->phy_if_mode);
+	ag->phy_dev = of_phy_connect(ag->dev, phy_node, ag71xx_phy_link_adjust,
+				     0, ag->phy_if_mode);
 
-	if (IS_ERR(ag->phy_dev)) {
-		dev_err(dev, "could not connect to PHY at %s\n",
-			   dev_name(&phydev->dev));
-		return PTR_ERR(ag->phy_dev);
+	of_node_put(phy_node);
+
+	if (!ag->phy_dev) {
+		dev_err(&ag->pdev->dev,
+			"Could not connect to PHY device. Deferring probe.\n");
+		return -EPROBE_DEFER;
 	}
 
-	/* mask with MAC supported features */
-	if (pdata->has_gbit)
-		phydev->supported &= PHY_GBIT_FEATURES;
-	else
-		phydev->supported &= PHY_BASIC_FEATURES;
-
-	phydev->advertising = phydev->supported;
-
-	dev_info(dev, "connected to PHY at %s [uid=%08x, driver=%s]\n",
-		    dev_name(&phydev->dev), phydev->phy_id, phydev->drv->name);
-
-	ag->link = 0;
-	ag->speed = 0;
-	ag->duplex = -1;
-
-	return ret;
-}
-
-static int dev_is_class(struct device *dev, void *class)
-{
-	if (dev->class != NULL && !strcmp(dev->class->name, class))
-		return 1;
+	dev_info(&ag->pdev->dev, "connected to PHY at %s [uid=%08x, driver=%s]\n",
+		    phydev_name(ag->phy_dev),
+		    ag->phy_dev->phy_id, ag->phy_dev->drv->name);
 
 	return 0;
 }
 
-static struct device *dev_find_class(struct device *parent, char *class)
-{
-	if (dev_is_class(parent, class)) {
-		get_device(parent);
-		return parent;
-	}
-
-	return device_find_child(parent, class, dev_is_class);
-}
-
-static struct mii_bus *dev_to_mii_bus(struct device *dev)
-{
-	struct device *d;
-
-	d = dev_find_class(dev, "mdio_bus");
-	if (d != NULL) {
-		struct mii_bus *bus;
-
-		bus = to_mii_bus(d);
-		put_device(d);
-
-		return bus;
-	}
-
-	return NULL;
-}
-
-int ag71xx_phy_connect(struct ag71xx *ag)
-{
-	struct ag71xx_platform_data *pdata = ag71xx_get_pdata(ag);
-
-#if defined(CONFIG_QCA_FULLOFFLOAD) || defined(CONFIG_AG71XX_FULLOFFLOAD_TARGET)
-       pdata->phy_mask = 0;
-       pdata->speed = SPEED_1000;
-       pdata->duplex = AG71XX_SGMII_FULL_DUPLEX;
-#endif
-
-
-	if (pdata->mii_bus_dev == NULL ||
-	    pdata->mii_bus_dev->bus == NULL )
-		return ag71xx_phy_connect_fixed(ag);
-
-	ag->mii_bus = dev_to_mii_bus(pdata->mii_bus_dev);
-	if (ag->mii_bus == NULL) {
-		dev_err(&ag->pdev->dev, "unable to find MII bus on device '%s'\n",
-			   dev_name(pdata->mii_bus_dev));
-		return -ENODEV;
-	}
-
-	/* Reset the mdio bus explicitly */
-	if (ag->mii_bus->reset) {
-		mutex_lock(&ag->mii_bus->mdio_lock);
-		ag->mii_bus->reset(ag->mii_bus);
-		mutex_unlock(&ag->mii_bus->mdio_lock);
-	}
-
-	if (pdata->switch_data)
-		return ag71xx_ar7240_init(ag);
-
-	if (pdata->phy_mask)
-		return ag71xx_phy_connect_multi(ag);
-
-	return ag71xx_phy_connect_fixed(ag);
-}
-
 void ag71xx_phy_disconnect(struct ag71xx *ag)
 {
-	struct ag71xx_platform_data *pdata = ag71xx_get_pdata(ag);
-
-	if (pdata->switch_data)
-		ag71xx_ar7240_cleanup(ag);
-	else if (ag->phy_dev)
-		phy_disconnect(ag->phy_dev);
+	phy_disconnect(ag->phy_dev);
 }
