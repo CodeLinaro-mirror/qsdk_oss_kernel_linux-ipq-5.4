@@ -31,15 +31,9 @@
 	leds {
 		compatible = "gpio-leds";
 		led@0 {
-			label = "cus531:green:status";
-			gpios = <&gpio 13 GPIO_ACTIVE_LOW>;
-		};
-
-		led@1 {
-			label = "cus531:green:wlan";
+			label = "cus531:green:sys";
 			gpios = <&gpio 12 GPIO_ACTIVE_LOW>;
 		};
-
 	};
 
 	i2c {
