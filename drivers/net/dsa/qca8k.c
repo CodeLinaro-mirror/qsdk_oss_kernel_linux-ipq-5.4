@@ -74,6 +74,21 @@ static const struct qca8k_mib_desc ar8327_mib[] = {
  */
 static u16 qca8k_current_page = 0xffff;
 
+static u32
+qca8k_port_to_phy(int port)
+{
+	/* From Andrew Lunn:
+	 * Port 0 has no internal phy.
+	 * Port 1 has an internal PHY at MDIO address 0.
+	 * Port 2 has an internal PHY at MDIO address 1.
+	 * ...
+	 * Port 5 has an internal PHY at MDIO address 4.
+	 * Port 6 has no internal PHY.
+	 */
+
+	return port - 1;
+}
+
 static void
 qca8k_split_addr(u32 regaddr, u16 *r1, u16 *r2, u16 *page)
 {
@@ -126,6 +141,36 @@ qca8k_mii_write32(struct mii_bus *bus, int phy_id, u32 regnum, u32 val)
 				    "failed to write qca8k 32bit register\n");
 }
 
+static u16
+qca8k_phy_external_mdio_read(struct qca8k_priv *priv, int port, int regnum)
+{
+	u16 phy, val;
+
+	phy = qca8k_port_to_phy(port) % PHY_MAX_ADDR;
+
+	mutex_lock_nested(&priv->bus->mdio_lock, MDIO_MUTEX_NESTED);
+
+	val = priv->bus->read(priv->bus, phy, regnum);
+
+	mutex_unlock(&priv->bus->mdio_lock);
+
+	return val;
+}
+
+static void
+qca8k_phy_external_mdio_write(struct qca8k_priv *priv, int port, int regnum, u16 data)
+{
+	u16 phy, val;
+
+	phy = qca8k_port_to_phy(port) % PHY_MAX_ADDR;
+
+	mutex_lock_nested(&priv->bus->mdio_lock, MDIO_MUTEX_NESTED);
+
+	val = priv->bus->write(priv->bus, phy, regnum, data);
+
+	mutex_unlock(&priv->bus->mdio_lock);
+}
+
 static void
 qca8k_set_page(struct mii_bus *bus, u16 page)
 {
@@ -148,8 +193,11 @@ qca8k_read(struct qca8k_priv *priv, u32 reg)
 
 	mutex_lock_nested(&priv->bus->mdio_lock, MDIO_MUTEX_NESTED);
 
-	qca8k_set_page(priv->bus, page);
+	/* mdio access seq */
+	priv->bus->write(priv->bus, 0x18, 0, page);
+	udelay(100);
 	val = qca8k_mii_read32(priv->bus, 0x10 | r2, r1);
+	priv->bus->write(priv->bus, 0x18, 0, HIGH_ADDR_DFLT);
 
 	mutex_unlock(&priv->bus->mdio_lock);
 
@@ -165,8 +213,11 @@ qca8k_write(struct qca8k_priv *priv, u32 reg, u32 val)
 
 	mutex_lock_nested(&priv->bus->mdio_lock, MDIO_MUTEX_NESTED);
 
-	qca8k_set_page(priv->bus, page);
+	/* mdio access seq */
+	priv->bus->write(priv->bus, 0x18, 0, page);
+	udelay(100);
 	qca8k_mii_write32(priv->bus, 0x10 | r2, r1, val);
+	priv->bus->write(priv->bus, 0x18, 0, HIGH_ADDR_DFLT);
 
 	mutex_unlock(&priv->bus->mdio_lock);
 }
@@ -181,11 +232,14 @@ qca8k_rmw(struct qca8k_priv *priv, u32 reg, u32 mask, u32 val)
 
 	mutex_lock_nested(&priv->bus->mdio_lock, MDIO_MUTEX_NESTED);
 
-	qca8k_set_page(priv->bus, page);
+	/* mdio access seq */
+	priv->bus->write(priv->bus, 0x18, 0, page);
+	udelay(100);
 	ret = qca8k_mii_read32(priv->bus, 0x10 | r2, r1);
 	ret &= ~mask;
 	ret |= val;
 	qca8k_mii_write32(priv->bus, 0x10 | r2, r1, ret);
+	priv->bus->write(priv->bus, 0x18, 0, HIGH_ADDR_DFLT);
 
 	mutex_unlock(&priv->bus->mdio_lock);
 
@@ -482,21 +536,6 @@ qca8k_port_set_status(struct qca8k_priv *priv, int port, int enable)
 		qca8k_reg_clear(priv, QCA8K_REG_PORT_STATUS(port), mask);
 }
 
-static u32
-qca8k_port_to_phy(int port)
-{
-	/* From Andrew Lunn:
-	 * Port 0 has no internal phy.
-	 * Port 1 has an internal PHY at MDIO address 0.
-	 * Port 2 has an internal PHY at MDIO address 1.
-	 * ...
-	 * Port 5 has an internal PHY at MDIO address 4.
-	 * Port 6 has no internal PHY.
-	 */
-
-	return port - 1;
-}
-
 static int
 qca8k_mdio_write(struct qca8k_priv *priv, int port, u32 regnum, u16 data)
 {
@@ -635,6 +674,22 @@ qca8k_setup_mdio_bus(struct qca8k_priv *priv)
 	return 0;
 }
 
+static int qca8k_find_cpu_port(struct dsa_switch *ds)
+{
+	struct qca8k_priv *priv = ds->priv;
+
+	/* Find the connected cpu port. Valid port are 0 or 6 */
+	if (dsa_is_cpu_port(ds, 0))
+		return 0;
+
+	dev_dbg(priv->dev, "port 0 is not the CPU port. Checking port 6");
+
+	if (dsa_is_cpu_port(ds, 6))
+		return 6;
+
+	return -EINVAL;
+}
+
 static int
 qca8k_setup(struct dsa_switch *ds)
 {
@@ -642,13 +697,11 @@ qca8k_setup(struct dsa_switch *ds)
 	int ret, i, phy_mode = -1;
 	u32 mask;
 
-	/* Make sure that port 0 is the cpu port */
-	if (!dsa_is_cpu_port(ds, 0)) {
-		pr_err("port 0 is not the CPU port\n");
-		return -EINVAL;
+	priv->cpu_port = qca8k_find_cpu_port(ds);
+	if (priv->cpu_port < 0) {
+		dev_err(priv->dev, "No cpu port configured in both cpu port0 and port6");
+		return priv->cpu_port;
 	}
-
-	mutex_init(&priv->reg_mutex);
 
 	/* Start by setting up the register mapping */
 	priv->regmap = devm_regmap_init(ds->dev, NULL, priv,
@@ -661,29 +714,29 @@ qca8k_setup(struct dsa_switch *ds)
 		return ret;
 
 	/* Initialize CPU port pad mode (xMII type, delays...) */
-	phy_mode = of_get_phy_mode(ds->ports[QCA8K_CPU_PORT].dn);
+	phy_mode = of_get_phy_mode(ds->ports[priv->cpu_port].dn);
 	if (phy_mode < 0) {
 		pr_err("Can't find phy-mode for master device\n");
 		return phy_mode;
 	}
-	ret = qca8k_set_pad_ctrl(priv, QCA8K_CPU_PORT, phy_mode);
+	ret = qca8k_set_pad_ctrl(priv, priv->cpu_port, phy_mode);
 	if (ret < 0)
 		return ret;
 
 	/* Enable CPU Port, force it to maximum bandwidth and full-duplex */
 	mask = QCA8K_PORT_STATUS_SPEED_1000 | QCA8K_PORT_STATUS_TXFLOW |
 	       QCA8K_PORT_STATUS_RXFLOW | QCA8K_PORT_STATUS_DUPLEX;
-	qca8k_write(priv, QCA8K_REG_PORT_STATUS(QCA8K_CPU_PORT), mask);
+	qca8k_write(priv, QCA8K_REG_PORT_STATUS(priv->cpu_port), mask);
 	qca8k_reg_set(priv, QCA8K_REG_GLOBAL_FW_CTRL0,
 		      QCA8K_GLOBAL_FW_CTRL0_CPU_PORT_EN);
-	qca8k_port_set_status(priv, QCA8K_CPU_PORT, 1);
-	priv->port_sts[QCA8K_CPU_PORT].enabled = 1;
+	qca8k_port_set_status(priv, priv->cpu_port, 1);
+	priv->port_sts[priv->cpu_port].enabled = 1;
 
 	/* Enable MIB counters */
 	qca8k_mib_init(priv);
 
 	/* Enable QCA header mode on the cpu port */
-	qca8k_write(priv, QCA8K_REG_PORT_HDR_CTRL(QCA8K_CPU_PORT),
+	qca8k_write(priv, QCA8K_REG_PORT_HDR_CTRL(priv->cpu_port),
 		    QCA8K_PORT_HDR_CTRL_ALL << QCA8K_PORT_HDR_CTRL_TX_S |
 		    QCA8K_PORT_HDR_CTRL_ALL << QCA8K_PORT_HDR_CTRL_RX_S);
 
@@ -699,16 +752,16 @@ qca8k_setup(struct dsa_switch *ds)
 
 	/* Forward all unknown frames to CPU port for Linux processing */
 	qca8k_write(priv, QCA8K_REG_GLOBAL_FW_CTRL1,
-		    BIT(0) << QCA8K_GLOBAL_FW_CTRL1_IGMP_DP_S |
-		    BIT(0) << QCA8K_GLOBAL_FW_CTRL1_BC_DP_S |
-		    BIT(0) << QCA8K_GLOBAL_FW_CTRL1_MC_DP_S |
-		    BIT(0) << QCA8K_GLOBAL_FW_CTRL1_UC_DP_S);
+		    BIT(priv->cpu_port) << QCA8K_GLOBAL_FW_CTRL1_IGMP_DP_S |
+		    BIT(priv->cpu_port) << QCA8K_GLOBAL_FW_CTRL1_BC_DP_S |
+		    BIT(priv->cpu_port) << QCA8K_GLOBAL_FW_CTRL1_MC_DP_S |
+		    BIT(priv->cpu_port) << QCA8K_GLOBAL_FW_CTRL1_UC_DP_S);
 
 	/* Setup connection between CPU port & user ports */
 	for (i = 0; i < QCA8K_NUM_PORTS; i++) {
 		/* CPU port gets connected to all user ports of the switch */
 		if (dsa_is_cpu_port(ds, i)) {
-			qca8k_rmw(priv, QCA8K_PORT_LOOKUP_CTRL(QCA8K_CPU_PORT),
+			qca8k_rmw(priv, QCA8K_PORT_LOOKUP_CTRL(priv->cpu_port),
 				  QCA8K_PORT_LOOKUP_MEMBER, dsa_user_ports(ds));
 		}
 
@@ -718,10 +771,10 @@ qca8k_setup(struct dsa_switch *ds)
 
 			qca8k_rmw(priv, QCA8K_PORT_LOOKUP_CTRL(i),
 				  QCA8K_PORT_LOOKUP_MEMBER,
-				  BIT(QCA8K_CPU_PORT));
+				  BIT(priv->cpu_port));
 
-			/* Enable ARP Auto-learning by default */
-			qca8k_reg_set(priv, QCA8K_PORT_LOOKUP_CTRL(i),
+			/* dsiable ARP Auto-learning by default */
+			qca8k_reg_clear(priv, QCA8K_PORT_LOOKUP_CTRL(i),
 				      QCA8K_PORT_LOOKUP_LEARN);
 
 			/* For port based vlans to work we need to set the
@@ -733,12 +786,93 @@ qca8k_setup(struct dsa_switch *ds)
 				    QCA8K_PORT_VLAN_CVID(1) |
 				    QCA8K_PORT_VLAN_SVID(1));
 		}
+
+		/* For port based vlans to work we need to set the
+		 * default egress vlan mode as untouched
+		 */
+		qca8k_write(priv, QCA8K_REG_PORT_VLAN_CTRL1(i),
+			    QCA8K_PORT_VLAN_EGMODE(0x3));
+		qca8k_rmw(priv, QCA8K_ROUTE_EGRESS_VLAN,
+			QCA8K_ROUTE_EGRESS_VLAN_MASK(i),
+			QCA8K_ROUTE_EGRESS_VLAN_VAL(i, 0x3));
 	}
 
 	/* Flush the FDB table */
 	qca8k_fdb_flush(priv);
 
 	return 0;
+}
+
+static void
+qca8k_teardown(struct dsa_switch *ds)
+{
+	struct qca8k_priv *priv = ds->priv;
+	int i = 0;
+
+	for (i = 0; i < QCA8K_NUM_PORTS; i++) {
+		/* resume stp status */
+		qca8k_rmw(priv, QCA8K_PORT_LOOKUP_CTRL(i),
+	  		QCA8K_PORT_LOOKUP_STATE_MASK, QCA8K_PORT_LOOKUP_STATE_FORWARD);
+
+		/* resume port status */
+		qca8k_port_set_status(priv, i, 1);
+
+		if (dsa_is_cpu_port(ds, i)) {
+			/* resume cpu port flowctrl */
+			qca8k_rmw(priv, QCA8K_REG_PORT_STATUS(priv->cpu_port),
+				QCA8K_PORT_STATUS_TXFLOW, 0);
+			qca8k_rmw(priv, QCA8K_REG_PORT_STATUS(priv->cpu_port),
+				QCA8K_PORT_STATUS_RXFLOW, 0);
+
+			/* resume cpu portvlan member */
+			qca8k_rmw(priv, QCA8K_PORT_LOOKUP_CTRL(i),
+				  QCA8K_PORT_LOOKUP_MEMBER, dsa_user_ports(ds));
+		}
+
+		if (dsa_is_user_port(ds, i)) {
+			int shift, port_mask = 0;
+			u16 reg = 0;
+
+			/* resume slave portvlan member */
+			port_mask = dsa_user_ports(ds);
+			port_mask &= ~BIT(i);
+			port_mask |= BIT(priv->cpu_port);
+			qca8k_rmw(priv, QCA8K_PORT_LOOKUP_CTRL(i),
+				  QCA8K_PORT_LOOKUP_MEMBER, port_mask);
+
+			/* enable ARP Auto-learning */
+			qca8k_reg_set(priv, QCA8K_PORT_LOOKUP_CTRL(i),
+				      QCA8K_PORT_LOOKUP_LEARN);
+
+			/* resume slave portvlan default vid */
+			shift = 16 * (i % 2);
+			qca8k_rmw(priv, QCA8K_EGRESS_VLAN(i),
+				  0xffff << shift, 0 << shift);
+			qca8k_write(priv, QCA8K_REG_PORT_VLAN_CTRL0(i),
+				    QCA8K_PORT_VLAN_CVID(0) |
+				    QCA8K_PORT_VLAN_SVID(0));
+
+			/* resume phy status by external mdio */
+			reg = qca8k_phy_external_mdio_read(priv, i, MII_BMCR);
+			reg &= ~BMCR_PDOWN;
+			qca8k_phy_external_mdio_write(priv, i, MII_BMCR, reg);
+		}
+	}
+
+	/* dsiable QCA header mode on the cpu port */
+	qca8k_write(priv, QCA8K_REG_PORT_HDR_CTRL(priv->cpu_port),
+		    QCA8K_PORT_HDR_CTRL_NONE << QCA8K_PORT_HDR_CTRL_TX_S |
+		    QCA8K_PORT_HDR_CTRL_NONE << QCA8K_PORT_HDR_CTRL_RX_S);
+
+	/* Recover unknown frames forwarding config */
+	qca8k_write(priv, QCA8K_REG_GLOBAL_FW_CTRL1,
+		    (BIT(priv->cpu_port) | dsa_user_ports(ds)) << QCA8K_GLOBAL_FW_CTRL1_IGMP_DP_S |
+		    (BIT(priv->cpu_port) | dsa_user_ports(ds)) << QCA8K_GLOBAL_FW_CTRL1_BC_DP_S |
+		    (BIT(priv->cpu_port) | dsa_user_ports(ds)) << QCA8K_GLOBAL_FW_CTRL1_MC_DP_S |
+		    (BIT(priv->cpu_port) | dsa_user_ports(ds)) << QCA8K_GLOBAL_FW_CTRL1_UC_DP_S);
+
+	/* Flush the FDB table */
+	qca8k_fdb_flush(priv);
 }
 
 static void
@@ -884,7 +1018,7 @@ static int
 qca8k_port_bridge_join(struct dsa_switch *ds, int port, struct net_device *br)
 {
 	struct qca8k_priv *priv = (struct qca8k_priv *)ds->priv;
-	int port_mask = BIT(QCA8K_CPU_PORT);
+	int port_mask = BIT(priv->cpu_port);
 	int i;
 
 	for (i = 1; i < QCA8K_NUM_PORTS; i++) {
@@ -927,7 +1061,7 @@ qca8k_port_bridge_leave(struct dsa_switch *ds, int port, struct net_device *br)
 	 * this port
 	 */
 	qca8k_rmw(priv, QCA8K_PORT_LOOKUP_CTRL(port),
-		  QCA8K_PORT_LOOKUP_MEMBER, BIT(QCA8K_CPU_PORT));
+		  QCA8K_PORT_LOOKUP_MEMBER, BIT(priv->cpu_port));
 }
 
 static int
@@ -1024,6 +1158,7 @@ qca8k_get_tag_protocol(struct dsa_switch *ds, int port)
 static const struct dsa_switch_ops qca8k_switch_ops = {
 	.get_tag_protocol	= qca8k_get_tag_protocol,
 	.setup			= qca8k_setup,
+	.teardown		= qca8k_teardown,
 	.adjust_link            = qca8k_adjust_link,
 	.get_strings		= qca8k_get_strings,
 	.get_ethtool_stats	= qca8k_get_ethtool_stats,
@@ -1044,7 +1179,7 @@ static int
 qca8k_sw_probe(struct mdio_device *mdiodev)
 {
 	struct qca8k_priv *priv;
-	u32 id;
+	u32 id = 0;
 
 	/* allocate the private data struct so that we can probe the switches
 	 * ID register
@@ -1076,6 +1211,8 @@ qca8k_sw_probe(struct mdio_device *mdiodev)
 	id &= QCA8K_MASK_CTRL_ID_M;
 	if (id != QCA8K_ID_QCA8337)
 		return -ENODEV;
+
+	priv->chip_id = id;
 
 	priv->ds = dsa_switch_alloc(&mdiodev->dev, QCA8K_NUM_PORTS);
 	if (!priv->ds)
