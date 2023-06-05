@@ -3265,6 +3265,8 @@ static int nl80211_send_iface(struct sk_buff *msg, u32 portid, u32 seq, int flag
 	if (wiphy_ext_feature_isset(&rdev->wiphy, NL80211_EXT_FEATURE_MLO)) {
 		if (nla_put(msg, NL80211_ATTR_MLD_MAC, ETH_ALEN, wdev->mld_address))
 			goto nla_put_failure;
+		if (nla_put_u8(msg, NL80211_ATTR_MLO_LINK_ID, wdev->linkId))
+			goto nla_put_failure;
 	}
 
 	if (rdev->ops->get_channel) {
