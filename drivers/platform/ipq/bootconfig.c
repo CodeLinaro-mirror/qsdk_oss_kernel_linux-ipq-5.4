@@ -536,7 +536,7 @@ static int __init bootconfig_partition_init(void)
 					ALT_PART_NAME_LENGTH) == 0))
 			continue;
 		bc1_partname_dir[i] = proc_mkdir(bc1_part_info[i].name, bootconfig1_info_dir);
-		if (bc1_partname_dir != NULL) {
+		if (bc1_partname_dir[0] != NULL) {
 			proc_create_data("primaryboot", S_IRUGO,
 					bc1_partname_dir[i],
 					&primaryboot_ops,
@@ -554,7 +554,7 @@ static int __init bootconfig_partition_init(void)
 					ALT_PART_NAME_LENGTH) == 0))
 			continue;
 		bc2_partname_dir[i] = proc_mkdir(bc2_part_info[i].name, bootconfig2_info_dir);
-		if (bc2_partname_dir != NULL) {
+		if (bc2_partname_dir[0] != NULL) {
 			proc_create_data("primaryboot", S_IRUGO,
 					bc2_partname_dir[i],
 					&primaryboot_ops,
