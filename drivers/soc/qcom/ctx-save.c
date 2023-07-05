@@ -1509,8 +1509,8 @@ static int ctx_save_probe(struct platform_device *pdev)
 
 #ifdef CONFIG_QCA_MINIDUMP
 	ret = register_module_notifier(&wlan_module_exit_nb);
-    if (ret)
-        dev_err(&pdev->dev, "Failed to register WLAN  module exit notifier\n");
+	if (ret)
+		dev_err(&pdev->dev, "Failed to register WLAN  module exit notifier\n");
 
 	ret = atomic_notifier_chain_register(&panic_notifier_list,
 				&wlan_panic_nb);
