@@ -41,6 +41,10 @@
 	 * |        |              |                         |
 	 * +--------+--------------+-------------------------+
 	 * |        |              |                         |
+	 * | The following conf is only for 256M profile.    |
+	 * | uboot  |  0x4A300000  |           2MB           |
+	 * |        |              |                         |
+	 * | The following conf is only for other profiles.  |
 	 * | uboot  |  0x4A100000  |           4MB           |
 	 * |        |              |                         |
 	 * +--------+--------------+-------------------------+
@@ -73,9 +77,15 @@
 		#endif
 		};
 
+#if defined(__IPQ_MEM_PROFILE_256_MB__)
+		uboot@4A300000 {
+			no-map;
+			reg = <0x0 0x4A300000 0x0 0x00200000>;
+#else
 		uboot@4A100000 {
 			no-map;
 			reg = <0x0 0x4A100000 0x0 0x00400000>;
+#endif
 		};
 
 		sbl@4A500000 {
