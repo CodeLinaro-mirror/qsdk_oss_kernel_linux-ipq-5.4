@@ -1741,6 +1741,7 @@ void mhi_debug_reg_dump(struct mhi_controller *mhi_cntrl)
 		{ "BHIE_TXVEC_STATUS", BHIE_TXVECSTATUS_OFFS, bhie_base},
 		{ "BHIE_RXVEC_DB", BHIE_RXVECDB_OFFS, bhie_base},
 		{ "BHIE_RXVEC_STATUS", BHIE_RXVECSTATUS_OFFS, bhie_base},
+		{ "BHIE_IMGTXDB", BHI_IMGTXDB, bhie_base},
 		{ NULL },
 	};
 
