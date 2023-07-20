@@ -2877,7 +2877,7 @@ static int qcom_pcie_probe(struct platform_device *pdev)
 		if (pcie->wake_irq < 0) {
 			dev_err(dev, "cannot initialize host\n");
 			pm_runtime_disable(&pdev->dev);
-			goto err_pm_runtime_put;
+			goto err_phy_exit;
 		}
 		pr_info("PCIe: RC%d is not enabled during bootup: "
 			"It will be enumerated upon client request\n", rc_idx);
@@ -2896,7 +2896,7 @@ static int qcom_pcie_probe(struct platform_device *pdev)
 		if (ret) {
 			dev_err(&pdev->dev, "Unable to request wake irq\n");
 			pm_runtime_disable(&pdev->dev);
-			goto err_pm_runtime_put;
+			goto err_phy_exit;
 		}
 	}
 
@@ -2910,7 +2910,7 @@ static int qcom_pcie_probe(struct platform_device *pdev)
 		if (ret) {
 			dev_err(&pdev->dev, "Unable to request global irq\n");
 			pm_runtime_disable(&pdev->dev);
-			goto err_pm_runtime_put;
+			goto err_phy_exit;
 		}
 	}
 
@@ -2956,6 +2956,8 @@ static int qcom_pcie_probe(struct platform_device *pdev)
 
 	return 0;
 
+err_phy_exit:
+	phy_exit(pcie->phy);
 err_pm_runtime_put:
 	pm_runtime_put(dev);
 	pm_runtime_disable(dev);
