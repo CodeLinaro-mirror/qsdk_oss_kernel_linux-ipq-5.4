@@ -370,11 +370,8 @@ static int lm_get_license_in_tlv(struct lm_svc_ctx *svc, bool rescan) {
 	}
 
 	/* set license_buffer is valid */
-	if (svc->license_buf_len) {
-		/* Add NULL TLV at the end of buffer */
-		memset(svc->license_buf + svc->license_buf_len, 0, 12);
+	if (svc->license_buf_len)
 		svc->license_buf_valid = true;
-	}
 
 err_licenseinfo:
 	release_firmware(licenseinfo);
