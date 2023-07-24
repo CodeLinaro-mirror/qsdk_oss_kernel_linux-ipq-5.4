@@ -275,6 +275,10 @@ static void skb_recycler_free_skb(struct sk_buff_head *list)
 
 	spin_lock_irqsave(&list->lock, flags);
 	while ((skb = skb_peek(list)) != NULL) {
+		/*
+		 * Recalculate the sum since skb->next will be updated in __skb_unlink
+		 */
+		skbuff_debugobj_sum_update(skb);
 		skbuff_debugobj_activate(skb);
 		__skb_unlink(skb, list);
 		skb_release_data(skb);
