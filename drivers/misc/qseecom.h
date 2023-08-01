@@ -133,6 +133,7 @@ enum qti_storage_service_rsa_cmd_t {
 	QTI_STOR_SVC_RSA_SIGN_DATA         = 0x00000003,
 	QTI_STOR_SVC_RSA_VERIFY_SIGNATURE  = 0x00000004,
 	QTI_STOR_SVC_RSA_IMPORT_KEY        = 0x00000005,
+	CRYPTO_STORAGE_UPDATE_KEYBLOB	   = 0x00000006,
 };
 
 enum qti_storage_service_digest_pad_algo_t {
@@ -337,6 +338,18 @@ struct qti_storage_service_rsa_verify_data_resp_t {
 	int32_t status;
 };
 
+struct qti_storage_service_rsa_update_keyblob_cmd_t {
+	enum qti_storage_service_rsa_cmd_t cmd_id;
+	struct qti_storage_service_rsa_key_blob_t key_blob;
+	enum qti_storage_service_digest_pad_algo_t pad_algo;
+};
+
+struct qti_storage_service_rsa_update_keyblob_data_resp_t {
+	enum qti_storage_service_rsa_cmd_t cmd_id;
+	int32_t status;
+	uint32_t key_blob_size;
+};
+
 struct qsee_64_send_cmd {
 	uint32_t cmd_id;
 	uint64_t data;
@@ -455,6 +468,7 @@ static uint64_t rsa_padding_type;
 static uint64_t fuse_addr;
 static uint64_t fuse_value;
 static uint64_t is_fec_enable;
+static uint32_t cur_rsa_pad_scheme = QTI_STOR_SVC_RSA_DIGEST_PAD_PKCS115_SHA2_256;
 
 static uint8_t *key_handle;
 dma_addr_t dma_key_handle;
@@ -493,6 +507,7 @@ static uint8_t *rsa_sign_data_buf;
 static size_t rsa_sign_data_len;
 static uint8_t *rsa_plain_data_buf;
 static size_t rsa_plain_data_len;
+static int rsa_key_blob_buf_valid;
 
 
 void *buf_rsa_key_blob = NULL;
@@ -698,6 +713,17 @@ static ssize_t store_rsa_signed_data(struct device *dev,
 
 static ssize_t verify_rsa_signed_data(struct device *dev,
 				     struct device_attribute *attr, char *buf);
+
+static ssize_t store_rsa_pad_scheme(struct device *dev,
+				   struct device_attribute *attr,
+				   const char *buf, size_t count);
+
+static ssize_t show_rsa_pad_scheme(struct device *dev,
+				  struct device_attribute *attr, char *buf);
+
+static ssize_t show_rsa_update_keyblob(struct device *dev,
+				       struct device_attribute *attr,
+				       char *buf);
 
 static ssize_t mdt_write(struct file *filp, struct kobject *kobj,
 			struct bin_attribute *bin_attr,
@@ -919,6 +945,8 @@ static DEVICE_ATTR(rsa_sign, 0644, show_rsa_signed_data,
 		   store_rsa_plain_data);
 static DEVICE_ATTR(rsa_verify, 0644, verify_rsa_signed_data,
 		   store_rsa_signed_data);
+static DEVICE_ATTR(rsa_pad_scheme, 0644, show_rsa_pad_scheme, store_rsa_pad_scheme);
+static DEVICE_ATTR(rsa_update_keyblob, 0644, show_rsa_update_keyblob, NULL);
 
 static struct attribute *sec_key_attrs[] = {
 	&dev_attr_generate.attr,
@@ -949,6 +977,8 @@ static struct attribute *rsa_sec_key_attrs[] = {
 	&dev_attr_rsa_import.attr,
 	&dev_attr_rsa_sign.attr,
 	&dev_attr_rsa_verify.attr,
+	&dev_attr_rsa_pad_scheme.attr,
+	&dev_attr_rsa_update_keyblob.attr,
 	NULL,
 };
 

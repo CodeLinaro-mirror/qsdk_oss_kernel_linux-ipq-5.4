@@ -1405,8 +1405,8 @@ generate_rsa_key_blob(struct device *dev, struct device_attribute *attr,
 	req_ptr->cmd_id = QTI_STOR_SVC_RSA_GENERATE_KEY;
 	req_ptr->rsa_params.modulus_size = RSA_MODULUS_LEN;
 	req_ptr->rsa_params.public_exponent = RSA_PUBLIC_EXPONENT;
-	req_ptr->rsa_params.pad_algo =
-			QTI_STOR_SVC_RSA_DIGEST_PAD_PKCS115_SHA2_256;
+	pr_info("rsa pad scheme used = %u\n",cur_rsa_pad_scheme);
+	req_ptr->rsa_params.pad_algo = cur_rsa_pad_scheme;
 	req_ptr->key_blob.key_material_len = RSA_KEY_BLOB_SIZE;
 
 	rc = qti_scm_tls_hardening(dma_req_addr, req_size,
@@ -1425,6 +1425,7 @@ generate_rsa_key_blob(struct device *dev, struct device_attribute *attr,
 
 	rsa_key_blob_len = resp_ptr->key_blob_size;
 	memcpy(buf, rsa_key_blob, rsa_key_blob_len);
+	rsa_key_blob_buf_valid = 1;
 
 	goto end;
 
@@ -1571,7 +1572,8 @@ import_rsa_key_blob(struct device *dev, struct device_attribute *attr,
 	memcpy(req_ptr->public_exponent, rsa_import_public_exponent,
 	      rsa_import_public_exponent_len);
 	req_ptr->public_exponent_len = rsa_import_public_exponent_len;
-	req_ptr->digest_pad_type = QTI_STOR_SVC_RSA_DIGEST_PAD_PKCS115_SHA2_256;
+	pr_info("rsa pad scheme used = %u\n",cur_rsa_pad_scheme);
+	req_ptr->digest_pad_type = cur_rsa_pad_scheme;
 	memcpy(req_ptr->pvt_exponent, rsa_import_pvt_exponent,
 	      rsa_import_pvt_exponent_len);
 	req_ptr->pvt_exponent_len = rsa_import_pvt_exponent_len;
@@ -1594,6 +1596,7 @@ import_rsa_key_blob(struct device *dev, struct device_attribute *attr,
 
 	rsa_key_blob_len = RSA_KEY_BLOB_SIZE;
 	memcpy(buf, rsa_key_blob, rsa_key_blob_len);
+	rsa_key_blob_buf_valid = 1;
 
 	goto end;
 
@@ -1633,6 +1636,7 @@ store_rsa_key_blob(struct device *dev, struct device_attribute *attr,
 
 	rsa_key_blob_len = count;
 	memcpy(rsa_key_blob, buf, rsa_key_blob_len);
+	rsa_key_blob_buf_valid = 1;
 
 	return count;
 }
@@ -1900,6 +1904,119 @@ end:
 	return message_len;
 }
 
+static ssize_t store_rsa_pad_scheme(struct device *dev, struct device_attribute *attr,
+				const char *buf, size_t count)
+{
+	uint32_t pad_scheme;
+
+	if(kstrtouint(buf, 10, &pad_scheme))
+		return -EINVAL;
+
+	if (pad_scheme == 1)
+		cur_rsa_pad_scheme = QTI_STOR_SVC_RSA_DIGEST_PAD_PKCS115_SHA2_256;
+	else if (pad_scheme == 2)
+		cur_rsa_pad_scheme = QTI_STOR_SVC_RSA_DIGEST_PAD_PSS_SHA2_256;
+	else
+		pr_info("Provide a valid padding scheme\n");
+
+	return count;
+}
+
+static ssize_t show_rsa_pad_scheme(struct device *dev, struct device_attribute *attr,
+				char *buf)
+{
+	char *msg;
+	msg = (cur_rsa_pad_scheme == 2) ? "PSS\n" : "PKCS\n";
+	memcpy(buf, msg, strlen(msg)+1);
+	return strlen(msg)+1;
+}
+
+static ssize_t show_rsa_update_keyblob(struct device *dev, struct device_attribute *attr,
+					char *buf)
+{
+	struct qti_storage_service_rsa_update_keyblob_cmd_t *req_ptr = NULL;
+	struct qti_storage_service_rsa_update_keyblob_data_resp_t *resp_ptr = NULL;
+	size_t req_size = 0;
+	size_t resp_size = 0;
+	size_t dma_buf_size = 0;
+	dma_addr_t dma_req_addr = 0;
+	dma_addr_t dma_resp_addr = 0;
+	struct qti_storage_service_rsa_key_t *temp = NULL;
+	int rc = 0;
+
+	dev = qdev;
+
+	if(!rsa_key_blob_buf_valid || rsa_key_blob_len == 0) {
+		pr_info("RSA Key blob is invalid. Input the key blob and try again.\n");
+		return -EINVAL;
+	}
+
+	temp = (struct qti_storage_service_rsa_key_t *)rsa_key_blob;
+	if (temp->pad_algo == cur_rsa_pad_scheme) {
+		pr_info("Padding type already matches with keyblob\n");
+		memcpy(buf, rsa_key_blob, rsa_key_blob_len);
+		return rsa_key_blob_len;
+	}
+
+	req_size = sizeof(struct qti_storage_service_rsa_update_keyblob_cmd_t);
+	dma_buf_size = PAGE_SIZE * (1 << get_order(req_size));
+	req_ptr = (struct qti_storage_service_rsa_update_keyblob_cmd_t *)
+					dma_alloc_coherent(dev, dma_buf_size,
+					&dma_req_addr, GFP_KERNEL);
+	if (!req_ptr)
+		return -ENOMEM;
+	resp_size = sizeof(struct qti_storage_service_rsa_update_keyblob_data_resp_t);
+	dma_buf_size = PAGE_SIZE * (1 << get_order(resp_size));
+	resp_ptr = (struct qti_storage_service_rsa_update_keyblob_data_resp_t *)
+					dma_alloc_coherent(dev, dma_buf_size,
+					&dma_resp_addr, GFP_KERNEL);
+	if (!resp_ptr)
+		return -ENOMEM;
+
+	req_ptr->cmd_id = CRYPTO_STORAGE_UPDATE_KEYBLOB;
+	req_ptr->key_blob.key_material = (u64)dma_rsa_key_blob;
+	req_ptr->key_blob.key_material_len = RSA_KEY_BLOB_SIZE;
+	req_ptr->pad_algo = cur_rsa_pad_scheme;
+
+	rc = qti_scm_tls_hardening(dma_req_addr, req_size,
+				   dma_resp_addr, resp_size,
+				   CLIENT_CMD_CRYPTO_RSA_64);
+
+	if (rc) {
+		pr_err("SCM call failed..SCM Call return value = %d\n", rc);
+		goto err_end;
+	}
+
+	if (resp_ptr->status) {
+		rc = resp_ptr->status;
+		pr_err("Response status failure..return value = %d\n", rc);
+		goto err_end;
+	}
+
+	rsa_key_blob_len = resp_ptr->key_blob_size;
+	memcpy(buf, rsa_key_blob, rsa_key_blob_len);
+
+	goto end;
+
+err_end:
+	dma_buf_size = PAGE_SIZE * (1 << get_order(req_size));
+	dma_free_coherent(dev, dma_buf_size, req_ptr, dma_req_addr);
+
+	dma_buf_size = PAGE_SIZE * (1 << get_order(resp_size));
+	dma_free_coherent(dev, dma_buf_size, resp_ptr, dma_resp_addr);
+
+	return rc;
+
+end:
+	dma_buf_size = PAGE_SIZE * (1 << get_order(req_size));
+	dma_free_coherent(dev, dma_buf_size, req_ptr, dma_req_addr);
+
+	dma_buf_size = PAGE_SIZE * (1 << get_order(resp_size));
+	dma_free_coherent(dev, dma_buf_size, resp_ptr, dma_resp_addr);
+
+	return rsa_key_blob_len;
+}
+
 static int __init rsa_sec_key_init(struct device *dev)
 {
 	int err = 0;
@@ -2009,6 +2126,7 @@ static int __init rsa_sec_key_init(struct device *dev)
 	rsa_import_pvt_exponent = (uint8_t*) buf_rsa_import_pvt_exponent;
 	rsa_sign_data_buf = (uint8_t*) buf_rsa_sign_data_buf;
 	rsa_plain_data_buf = (uint8_t*) buf_rsa_plain_data_buf;
+	rsa_key_blob_buf_valid = 0;
 
 	return 0;
 }
