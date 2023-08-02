@@ -40,7 +40,9 @@
 #define LICENSE_INFO_START 	"[licensefile]"
 #define FILE_COUNT_STRING 	"filecount"
 #define FILE_STRING 		"file"
-
+#define MAX_LICENSE_INFO_SIZE	(sizeof(LICENSE_INFO_START) + \
+				 sizeof(FILE_COUNT_STRING) + sizeof(FILE_STRING) + \
+				 ((sizeof(FILE_STRING) + FILE_NAME_MAX + 5) * QMI_LM_MAX_LICENSE_FILES_V01))
 struct qmi_handle *lm_clnt_hdl;
 
 static struct lm_svc_ctx *lm_svc;
@@ -245,7 +247,7 @@ static int lm_get_license_in_tlv(struct lm_svc_ctx *svc, bool rescan) {
 	char *ptr = NULL;
 	char *token = NULL;
 	char *magic = NULL;
-	void *buf;
+	void *buf, *lic_info_buf;
 	size_t lic_size_aligned;
 	int ret = 0, file_count = 0, files_accounted = 0;
 
@@ -253,13 +255,20 @@ static int lm_get_license_in_tlv(struct lm_svc_ctx *svc, bool rescan) {
 	if (svc->license_buf_valid && !rescan)
 		return 0;
 
+	lic_info_buf = kmalloc(MAX_LICENSE_INFO_SIZE, GFP_KERNEL);
+	if(!lic_info_buf)
+		return -ENOMEM;
+
 	/* Request the license_info.conf file */
-	ret = request_firmware(&licenseinfo, LICENSE_INFO_CONF_PATH, dev);
+	ret = request_firmware_into_buf(&licenseinfo, LICENSE_INFO_CONF_PATH, dev,
+					lic_info_buf, MAX_LICENSE_INFO_SIZE);
+
 	if(ret || !licenseinfo->data || !licenseinfo->size) {
-		dev_err(svc->dev, "%s file is not present\n",LICENSE_INFO_CONF_PATH);
+		dev_err(svc->dev, "%s file is not valid\n",LICENSE_INFO_CONF_PATH);
 		/* if ret is zero, then call release_firmware */
 		if (!ret)
 			release_firmware(licenseinfo);
+		kfree(lic_info_buf);
 		return -ENOENT;
 	}
 
@@ -375,6 +384,7 @@ static int lm_get_license_in_tlv(struct lm_svc_ctx *svc, bool rescan) {
 
 err_licenseinfo:
 	release_firmware(licenseinfo);
+	kfree(lic_info_buf);
 
 	return ret;
 }
