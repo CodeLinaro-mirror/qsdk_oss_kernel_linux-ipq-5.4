@@ -131,7 +131,7 @@
 
 	tcsr_mutex: hwlock {
 		compatible = "qcom,tcsr-mutex";
-		syscon = <&tcsr_mutex_regs 0 0x80>;
+		syscon = <&tcsr_mutex_regs 0 0x1000>;
 		#hwlock-cells = <1>;
 	};
 
@@ -158,7 +158,7 @@
 	smem {
 		compatible = "qcom,smem";
 		memory-region = <&smem_region>;
-		hwlocks = <&tcsr_mutex 0>;
+		hwlocks = <&tcsr_mutex 3>;
 	};
 
 	qseecom: qseecom {
@@ -973,7 +973,7 @@
 
 		tcsr_mutex_regs: syscon@1905000 {
 			compatible = "syscon";
-			reg = <0x01905000 0x8000>;
+			reg = <0x01905000 0x20000>;
 		};
 
 		tcsr_boot_misc: syscon@193d100 {
