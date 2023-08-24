@@ -27,6 +27,7 @@ static void qce_aead_done(void *data)
 	struct qce_aead_ctx *ctx = crypto_tfm_ctx(async_req->tfm);
 	struct qce_alg_template *tmpl = to_aead_tmpl(crypto_aead_reqtfm(req));
 	struct qce_device *qce = tmpl->qce;
+	struct qce_bam_transaction *qce_bam_txn = qce->dma.qce_bam_txn;
 	struct qce_result_dump *result_buf = qce->dma.result_buf;
 	enum dma_data_direction dir_src, dir_dst;
 	bool diff_dst;
@@ -40,10 +41,6 @@ static void qce_aead_done(void *data)
 	dir_src = diff_dst ? DMA_TO_DEVICE : DMA_BIDIRECTIONAL;
 	dir_dst = diff_dst ? DMA_FROM_DEVICE : DMA_BIDIRECTIONAL;
 
-	error = qce_dma_terminate_all(&qce->dma);
-	if (error)
-		dev_dbg(qce->dev, "aead dma termination error (%d)\n",
-			error);
 	if (diff_dst)
 		dma_unmap_sg(qce->dev, rctx->src_sg, rctx->src_nents, dir_src);
 
@@ -62,9 +59,19 @@ static void qce_aead_done(void *data)
 		sg_free_table(&rctx->dst_tbl);
 	}
 
-	error = qce_check_status(qce, &status);
-	if (error < 0 && (error != -EBADMSG))
-		dev_err(qce->dev, "aead operation error (%x)\n", status);
+	if (qce->qce_cmd_desc_enable) {
+		if (qce_bam_txn->qce_read_sgl_cnt)
+			dma_unmap_sg(qce->dev,
+				qce_bam_txn->qce_reg_read_sgl,
+				qce_bam_txn->qce_read_sgl_cnt,
+				DMA_DEV_TO_MEM);
+
+		if (qce_bam_txn->qce_write_sgl_cnt)
+			dma_unmap_sg(qce->dev,
+				qce_bam_txn->qce_reg_write_sgl,
+				qce_bam_txn->qce_write_sgl_cnt,
+				DMA_MEM_TO_DEV);
+	}
 
 	if (IS_ENCRYPT(rctx->flags)) {
 		totallen = req->cryptlen + req->assoclen;
@@ -84,6 +91,15 @@ static void qce_aead_done(void *data)
 			error = -EBADMSG;
 		}
 	}
+
+	error = qce_dma_terminate_all(&qce->dma);
+	if (error)
+		dev_dbg(qce->dev, "aead dma termination error (%d)\n",
+			error);
+
+	error = qce_check_status(qce, &status);
+	if (error < 0 && (error != -EBADMSG))
+		dev_err(qce->dev, "aead operation error (%x)\n", status);
 
 	qce->async_req_done(qce, error);
 }
@@ -436,6 +452,10 @@ qce_aead_async_req_handle(struct crypto_async_request *async_req)
 	dir_src = diff_dst ? DMA_TO_DEVICE : DMA_BIDIRECTIONAL;
 	dir_dst = diff_dst ? DMA_FROM_DEVICE : DMA_BIDIRECTIONAL;
 
+	/* Get the LOCK for this request */
+	if (qce->qce_cmd_desc_enable)
+		qce_read_dma_get_lock(qce);
+
 	if (IS_CCM(rctx->flags)) {
 		ret = qce_aead_create_ccm_nonce(rctx, ctx);
 		if (ret)
@@ -474,9 +494,15 @@ qce_aead_async_req_handle(struct crypto_async_request *async_req)
 
 	qce_dma_issue_pending(&qce->dma);
 
-	ret = qce_start(async_req, tmpl->crypto_alg_type);
-	if (ret)
-		goto error_terminate;
+	if (qce->qce_cmd_desc_enable) {
+		ret = qce_start_dma(async_req, tmpl->crypto_alg_type);
+		if (ret)
+			goto error_terminate;
+	} else {
+		ret = qce_start(async_req, tmpl->crypto_alg_type);
+		if (ret)
+			goto error_terminate;
+	}
 
 	return 0;
 
