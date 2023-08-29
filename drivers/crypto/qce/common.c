@@ -126,6 +126,14 @@ static inline void qce_crypto_go(struct qce_device *qce, bool result_dump)
 		qce_write(qce, REG_GOPROC, BIT(GO_SHIFT));
 }
 
+static inline void qce_crypto_go_dma(struct qce_device *qce, bool result_dump)
+{
+	if (result_dump)
+		qce_write_reg_dma(qce, REG_GOPROC, BIT(GO_SHIFT) | BIT(RESULTS_DUMP_SHIFT), 1);
+	else
+		qce_write_reg_dma(qce, REG_GOPROC, BIT(GO_SHIFT), 1);
+}
+
 #if defined(CONFIG_CRYPTO_DEV_QCE_SHA) || defined(CONFIG_CRYPTO_DEV_QCE_AEAD)
 static u32 qce_auth_cfg(unsigned long flags, u32 key_size, u32 auth_size)
 {
@@ -633,7 +641,7 @@ int qce_read_dma_get_lock(struct qce_device *qce)
 	u32 val = 0;
 	qce_clear_bam_transaction(qce);
 
-	qce_read_reg_dma(qce, REG_CONFIG, &val, 1);
+	qce_read_reg_dma(qce, REG_STATUS, &val, 1);
 
 	ret = qce_submit_cmd_desc(qce, QCE_DMA_DESC_FLAG_LOCK);
 	if (ret) {
@@ -651,7 +659,7 @@ int qce_unlock_reg_dma(struct qce_device *qce)
 	u32 val = 0;
 	qce_clear_bam_transaction(qce);
 
-	qce_read_reg_dma(qce, REG_CONFIG, &val, 1);
+	qce_read_reg_dma(qce, REG_STATUS, &val, 1);
 
 	ret = qce_submit_cmd_desc(qce, QCE_DMA_DESC_FLAG_UNLOCK);
 	if (ret) {
@@ -810,6 +818,139 @@ static int qce_setup_regs_aead(struct crypto_async_request *async_req)
 
 	return 0;
 }
+
+static int qce_setup_regs_aead_dma(struct crypto_async_request *async_req)
+{
+	struct aead_request *req = aead_request_cast(async_req);
+	struct qce_aead_reqctx *rctx = aead_request_ctx(req);
+	struct qce_aead_ctx *ctx = crypto_tfm_ctx(async_req->tfm);
+	struct qce_alg_template *tmpl = to_aead_tmpl(crypto_aead_reqtfm(req));
+	struct qce_device *qce = tmpl->qce;
+	u32 enckey[QCE_MAX_CIPHER_KEY_SIZE / sizeof(u32)] = {0};
+	u32 enciv[QCE_MAX_IV_SIZE / sizeof(u32)] = {0};
+	u32 authkey[QCE_SHA_HMAC_KEY_SIZE / sizeof(u32)] = {0};
+	u32 authiv[SHA256_DIGEST_SIZE / sizeof(u32)] = {0};
+	u32 authnonce[QCE_MAX_NONCE / sizeof(u32)] = {0};
+	unsigned int enc_keylen = ctx->enc_keylen;
+	unsigned int auth_keylen = ctx->auth_keylen;
+	unsigned int enc_ivsize = rctx->ivsize;
+	unsigned int auth_ivsize = 0;
+	unsigned int enckey_words, enciv_words;
+	unsigned int authkey_words, authiv_words, authnonce_words;
+	unsigned long flags = rctx->flags;
+	u32 encr_cfg, auth_cfg, config, totallen;
+	u32 iv_last_word;
+	int ret;
+
+	qce_clear_bam_transaction(qce);
+
+	qce_setup_config_dma(qce);
+
+	/* Write encryption key */
+	enckey_words = qce_be32_to_cpu_array(enckey, ctx->enc_key, enc_keylen);
+	qce_write_array_dma(qce, REG_ENCR_KEY0, enckey, enckey_words);
+
+	/* Write encryption iv */
+	enciv_words = qce_be32_to_cpu_array(enciv, rctx->iv, enc_ivsize);
+	qce_write_array_dma(qce, REG_CNTR0_IV0, enciv, enciv_words);
+
+	if (IS_CCM(rctx->flags)) {
+		iv_last_word = enciv[enciv_words - 1];
+		qce_write_reg_dma(qce, REG_CNTR3_IV3, iv_last_word + 1, 1);
+		qce_write_array_dma(qce, REG_ENCR_CCM_INT_CNTR0, (u32 *)enciv, enciv_words);
+		qce_write_reg_dma(qce, REG_CNTR_MASK, ~0, 1);
+		qce_write_reg_dma(qce, REG_CNTR_MASK0, ~0, 1);
+		qce_write_reg_dma(qce, REG_CNTR_MASK1, ~0, 1);
+		qce_write_reg_dma(qce, REG_CNTR_MASK2, ~0, 1);
+	}
+
+	/* Clear authentication IV and KEY registers of previous values */
+	qce_clear_array_dma(qce, REG_AUTH_IV0, 16);
+	qce_clear_array_dma(qce, REG_AUTH_KEY0, 16);
+
+	/* Clear byte count */
+	qce_clear_array_dma(qce, REG_AUTH_BYTECNT0, 4);
+
+	/* Write authentication key */
+	authkey_words = qce_be32_to_cpu_array(authkey, ctx->auth_key, auth_keylen);
+	qce_write_array_dma(qce, REG_AUTH_KEY0, (u32 *)authkey, authkey_words);
+
+	/* Write initial authentication IV only for HMAC algorithms */
+	if (IS_SHA_HMAC(rctx->flags)) {
+		/* Write default authentication iv */
+		if (IS_SHA1_HMAC(rctx->flags)) {
+			auth_ivsize = SHA1_DIGEST_SIZE;
+			memcpy(authiv, std_iv_sha1, auth_ivsize);
+		} else if (IS_SHA256_HMAC(rctx->flags)) {
+			auth_ivsize = SHA256_DIGEST_SIZE;
+			memcpy(authiv, std_iv_sha256, auth_ivsize);
+		}
+		authiv_words = auth_ivsize / sizeof(u32);
+		qce_write_array_dma(qce, REG_AUTH_IV0, (u32 *)authiv, authiv_words);
+	} else if (IS_CCM(rctx->flags)) {
+		/* Write nonce for CCM algorithms */
+		authnonce_words = qce_be32_to_cpu_array(authnonce, rctx->ccm_nonce, QCE_MAX_NONCE);
+		qce_write_array_dma(qce, REG_AUTH_INFO_NONCE0, authnonce, authnonce_words);
+	}
+
+	/* Set up ENCR_SEG_CFG */
+	encr_cfg = qce_encr_cfg(flags, enc_keylen);
+	if (IS_ENCRYPT(flags))
+		encr_cfg |= BIT(ENCODE_SHIFT);
+	qce_write_reg_dma(qce, REG_ENCR_SEG_CFG, encr_cfg, 1);
+
+	/* Set up AUTH_SEG_CFG */
+	auth_cfg = qce_auth_cfg(rctx->flags, auth_keylen, ctx->authsize);
+	auth_cfg |= BIT(AUTH_LAST_SHIFT);
+	auth_cfg |= BIT(AUTH_FIRST_SHIFT);
+	if (IS_ENCRYPT(flags)) {
+		if (IS_CCM(rctx->flags))
+			auth_cfg |= AUTH_POS_BEFORE << AUTH_POS_SHIFT;
+		else
+			auth_cfg |= AUTH_POS_AFTER << AUTH_POS_SHIFT;
+	} else {
+		if (IS_CCM(rctx->flags))
+			auth_cfg |= AUTH_POS_AFTER << AUTH_POS_SHIFT;
+		else
+			auth_cfg |= AUTH_POS_BEFORE << AUTH_POS_SHIFT;
+	}
+	qce_write_reg_dma(qce, REG_AUTH_SEG_CFG, auth_cfg, 1);
+
+	totallen = rctx->cryptlen + rctx->assoclen;
+
+	/* Set the encryption size and start offset */
+	if (IS_CCM(rctx->flags) && IS_DECRYPT(rctx->flags))
+		qce_write_reg_dma(qce, REG_ENCR_SEG_SIZE, rctx->cryptlen + ctx->authsize, 1);
+	else
+		qce_write_reg_dma(qce, REG_ENCR_SEG_SIZE, rctx->cryptlen, 1);
+	qce_write_reg_dma(qce, REG_ENCR_SEG_START, (rctx->assoclen & 0xffff), 1);
+
+	/* Set the authentication size and start offset */
+	qce_write_reg_dma(qce, REG_AUTH_SEG_SIZE, totallen, 1);
+	qce_write_reg_dma(qce, REG_AUTH_SEG_START, 0, 1);
+
+	/* Write total length */
+	if (IS_CCM(rctx->flags) && IS_DECRYPT(rctx->flags))
+		qce_write_reg_dma(qce, REG_SEG_SIZE, totallen + ctx->authsize, 1);
+	else
+		qce_write_reg_dma(qce, REG_SEG_SIZE, totallen, 1);
+
+	/* get little endianness */
+	config = qce_config_reg(qce, 1);
+	qce_write_reg_dma(qce, REG_CONFIG, config, 1);
+
+	/* Start the process */
+	qce_crypto_go_dma(qce, !IS_CCM(flags));
+
+	ret = qce_submit_cmd_desc(qce, 0);
+	if (ret) {
+		dev_err(qce->dev, "%s:Error in submitting cmd descriptor\n",
+			__func__);
+		return ret;
+	}
+
+	return 0;
+}
 #endif
 
 int qce_start(struct crypto_async_request *async_req, u32 type)
@@ -842,6 +983,10 @@ int qce_start_dma(struct crypto_async_request *async_req, u32 type)
 #ifdef CONFIG_CRYPTO_DEV_QCE_SHA
 		case CRYPTO_ALG_TYPE_AHASH:
 			return qce_setup_regs_ahash_dma(async_req);
+#endif
+#ifdef CONFIG_CRYPTO_DEV_QCE_AEAD
+		case CRYPTO_ALG_TYPE_AEAD:
+			return qce_setup_regs_aead_dma(async_req);
 #endif
 		default:
 			return -EINVAL;
