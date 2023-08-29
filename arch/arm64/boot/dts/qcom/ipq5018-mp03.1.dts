@@ -366,23 +366,23 @@
 			pinctrl-names = "default";
 			phy-reset-gpio = <&tlmm 39 0>;
 
-			phy_port1: phy@0 {
+			phy_port1: ethernet-phy@0 {
 				reg = <0>;
 			};
 
-			phy_port2: phy@1 {
+			phy_port2: ethernet-phy@1 {
 				reg = <1>;
 			};
 
-			phy_port3: phy@2 {
+			phy_port3: ethernet-phy@2 {
 				reg = <2>;
 			};
 
-			phy_port4: phy@3 {
+			phy_port4: ethernet-phy@3 {
 				reg = <3>;
 			};
 
-	        switch0@10 {
+			switch0@10 {
 				compatible = "qca,qca8337";
 				#address-cells = <1>;
 				#size-cells = <0>;
