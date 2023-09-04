@@ -640,7 +640,7 @@ int mhitest_pci_register_mhi(struct mhitest_platform *mplat)
 	dev_set_drvdata(&pci_dev->dev, mplat);
 	mhi_ctrl->cntrl_dev = &pci_dev->dev;
 
-	if (!mplat->fw_name) {
+	if (!mplat->fw_name[0]) {
 		MHITEST_ERR("fw_name is NULLL\n");
 		return -EINVAL;
 	}
