@@ -2708,3 +2708,4 @@
 
 #include "ipq5332-coresight.dtsi"
 #include "ipq5332-thermal.dtsi"
+#include "ipq5332-noc.dtsi"
