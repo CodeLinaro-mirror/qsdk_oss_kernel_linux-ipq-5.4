@@ -16,6 +16,7 @@
 #define KEYRING_DESC_HW_KEY_CR	"hw_key_cr"
 
 static char context[CONTEXT_SIZE];
+static int hw_key_cr_len, hw_key_o_len;
 
 extern int look_up_user_keyrings(struct key **, struct key **);
 
@@ -68,7 +69,6 @@ static __init int tmel_hw_key_init(void)
 {
 	size_t context_len = strlen(context);
 	uint8_t hw_key_o[MAX_KEY_SIZE] = {0}, hw_key_cr[MAX_KEY_SIZE] = {0};
-	u32 hw_key_o_len = MAX_KEY_SIZE, hw_key_cr_len = MAX_KEY_SIZE;
 	int ret = 0;
 
 	if (context_len == 0) {
@@ -77,7 +77,8 @@ static __init int tmel_hw_key_init(void)
 	}
 
 	ret = hw_key_gen_store(context, context_len, KEYRING_TYPE,
-			       KEYRING_DESC_HW_KEY_O, hw_key_o, hw_key_o_len);
+			       KEYRING_DESC_HW_KEY_O, hw_key_o,
+			       (u32) hw_key_o_len);
 	if (ret) {
 		pr_err("Failed to generate key for given context, error = 0x%x",
 		       ret);
@@ -85,7 +86,7 @@ static __init int tmel_hw_key_init(void)
 	}
 
 	ret = hw_key_gen_store(NULL, 0, KEYRING_TYPE, KEYRING_DESC_HW_KEY_CR,
-			       hw_key_cr, hw_key_cr_len);
+			       hw_key_cr, (u32) hw_key_cr_len);
 	if (ret) {
 		pr_err("Failed to generate key for NULL context, error = 0x%x",
 		       ret);
@@ -96,4 +97,7 @@ static __init int tmel_hw_key_init(void)
 }
 
 module_param_string(context, context, sizeof(context), 0);
+module_param(hw_key_o_len, int, 0);
+module_param(hw_key_cr_len, int, 0);
+
 device_initcall(tmel_hw_key_init);
