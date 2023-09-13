@@ -312,6 +312,7 @@ config QTI_CTXT_SAVE
 config QTI_HW_KEY
 	bool "QTI HW Key driver"
 	depends on QCOM_SCM
+	select KEYS
 	help
 	  This driver requests HW Key and stores in kernel keyring.
 
