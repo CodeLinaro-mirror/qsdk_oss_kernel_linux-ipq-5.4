@@ -20,7 +20,7 @@
 	reserved-memory {
 		mlo_global_mem1: mlo_global_mem_1@1 {
 			no-map;
-			size = <0x0 0xD00000>;
+			size = <0x0 0xE00000>;
 			status = "ok";
 		};
 	};
