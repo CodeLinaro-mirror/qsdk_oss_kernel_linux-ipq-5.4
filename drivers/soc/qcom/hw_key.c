@@ -49,7 +49,7 @@ __init int hw_key_gen_store(char *ctx_data, size_t ctx_data_len,
 	if (ctx_data_len > 0 && ctx_salt_len > 0) {
 		ret = qti_scm_derive_and_share_key(QTI_SCM_DERIVE_KEY,
 				QTI_SCM_DERIVE_KEY_PARAM_ID, hw_key_len,
-				ctx_salt, (u32)ctx_salt_len, &hw_key[MAX_KEY_SIZE],
+				ctx_salt, (u32)ctx_salt_len, &hw_key[key_len],
 				hw_key_len);
 		if (ret < 0)
 			goto error;
