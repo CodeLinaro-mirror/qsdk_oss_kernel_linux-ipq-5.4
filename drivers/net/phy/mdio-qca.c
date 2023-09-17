@@ -82,13 +82,14 @@
 #define UNIPHY_ADDR_NUM			3
 #define MII_HIGH_ADDR_PREFIX			0x18
 #define MII_LOW_ADDR_PREFIX			0x10
+#define SWITCH_REG_TYPE_MASK			GENMASK(31, 28)
+#define SWITCH_REG_TYPE_QCA8386			0
+#define SWITCH_REG_TYPE_QCA8337			1
+#define SWITCH_HIGH_ADDR_DFLT			0x200
 
 #define CMN_PLL_REFCLK_INDEX	GENMASK(3, 0)
 #define CMN_PLL_REFCLK_EXTERNAL	BIT(9)
 #define CMN_ANA_EN_SW_RSTN	BIT(6)
-
-static DEFINE_MUTEX(switch_mdio_lock);
-/* macro for mht chipset end */
 
 struct qca_mdio_data {
 	struct mii_bus *mii_bus;
@@ -98,6 +99,8 @@ struct qca_mdio_data {
 	int clk_div;
 	bool force_c22;
 	void (*preinit)(struct mii_bus *bus);
+	u32 (*sw_read)(struct mii_bus *bus, u32 reg);
+	void (*sw_write)(struct mii_bus *bus, u32 reg, u32 val);
 };
 
 static int qca_mdio_wait_busy(struct qca_mdio_data *am)
@@ -333,6 +336,49 @@ static void qca_tcsr_ldo_rdy_set(bool ready)
 	iounmap(tcsr_base);
 }
 
+static inline void qca8337_split_addr(u32 regaddr, u16 *r1, u16 *r2, u16 *page)
+{
+	regaddr >>= 1;
+	*r1 = regaddr & 0x1e;
+
+	regaddr >>= 5;
+	*r2 = regaddr & 0x7;
+
+	regaddr >>= 3;
+	*page = regaddr & 0x3ff;
+}
+
+u32 qca8337_read(struct mii_bus *mii_bus, u32 reg)
+{
+	u16 r1, r2, page;
+	u16 lo, hi;
+
+	qca8337_split_addr(reg, &r1, &r2, &page);
+	mii_bus->write(mii_bus, MII_HIGH_ADDR_PREFIX, 0, page);
+	udelay(100);
+
+	lo = mii_bus->read(mii_bus, MII_LOW_ADDR_PREFIX | r2, r1);
+	hi = mii_bus->read(mii_bus, MII_LOW_ADDR_PREFIX | r2, r1 + 1);
+
+	mii_bus->write(mii_bus, MII_HIGH_ADDR_PREFIX, 0, SWITCH_HIGH_ADDR_DFLT);
+	return (hi << 16) | lo;
+}
+
+void qca8337_write(struct mii_bus *mii_bus, u32 reg, u32 val)
+{
+	u16 r1, r2, page;
+
+	qca8337_split_addr(reg, &r1, &r2, &page);
+	mii_bus->write(mii_bus, MII_HIGH_ADDR_PREFIX, 0, page);
+	udelay(100);
+
+	mii_bus->write(mii_bus, MII_LOW_ADDR_PREFIX | r2, r1, val & 0xffff);
+	mii_bus->write(mii_bus, MII_LOW_ADDR_PREFIX | r2, r1 + 1, (u16)(val >> 16));
+
+	mii_bus->write(mii_bus, MII_HIGH_ADDR_PREFIX , 0, SWITCH_HIGH_ADDR_DFLT);
+}
+
+
 static inline void split_addr(u32 regaddr, u16 *r1, u16 *r2, u16 *page, u16 *switch_phy_id)
 {
 	*r1 = regaddr & 0x1c;
@@ -347,25 +393,23 @@ static inline void split_addr(u32 regaddr, u16 *r1, u16 *r2, u16 *page, u16 *swi
 	*switch_phy_id = regaddr & 0xff;
 }
 
-u32 qca_mii_read(struct mii_bus *mii_bus, u32 reg)
+u32 qca8386_read(struct mii_bus *mii_bus, u32 reg)
 {
 	u16 r1, r2, page, switch_phy_id;
 	int lo, hi;
 
 	split_addr(reg, &r1, &r2, &page, &switch_phy_id);
 
-	mutex_lock(&switch_mdio_lock);
 	mii_bus->write(mii_bus, MII_HIGH_ADDR_PREFIX | (switch_phy_id >> 5),
 			switch_phy_id & 0x1f, page);
 	udelay(100);
 	lo = mii_bus->read(mii_bus, MII_LOW_ADDR_PREFIX | r2, r1);
 	hi = mii_bus->read(mii_bus, MII_LOW_ADDR_PREFIX | r2, r1 | BIT(1));
-	mutex_unlock(&switch_mdio_lock);
 
 	return (hi << 16) | lo;
 }
 
-void qca_mii_write(struct mii_bus *mii_bus, u32 reg, u32 val)
+void qca8386_write(struct mii_bus *mii_bus, u32 reg, u32 val)
 {
 	u16 r1, r2, page, switch_phy_id;
 	u16 lo, hi;
@@ -374,13 +418,40 @@ void qca_mii_write(struct mii_bus *mii_bus, u32 reg, u32 val)
 	lo = val & 0xffff;
 	hi = val >> 16;
 
-	mutex_lock(&switch_mdio_lock);
 	mii_bus->write(mii_bus, MII_HIGH_ADDR_PREFIX | (switch_phy_id >> 5),
 			switch_phy_id & 0x1f, page);
 	udelay(100);
 	mii_bus->write(mii_bus, MII_LOW_ADDR_PREFIX | r2, r1, lo);
 	mii_bus->write(mii_bus, MII_LOW_ADDR_PREFIX | r2, r1 | BIT(1), hi);
-	mutex_unlock(&switch_mdio_lock);
+}
+
+u32 qca_mii_read(struct mii_bus *mii_bus, u32 reg)
+{
+	u32 val = 0xffffffff;
+	switch (FIELD_GET(SWITCH_REG_TYPE_MASK, reg)) {
+		case SWITCH_REG_TYPE_QCA8337:
+			val = qca8337_read(mii_bus, reg);
+			break;
+		case SWITCH_REG_TYPE_QCA8386:
+		default:
+			val = qca8386_read(mii_bus, reg);
+			break;
+	}
+
+	return val;
+}
+
+void qca_mii_write(struct mii_bus *mii_bus, u32 reg, u32 val)
+{
+	switch (FIELD_GET(SWITCH_REG_TYPE_MASK, reg)) {
+		case SWITCH_REG_TYPE_QCA8337:
+			qca8337_write(mii_bus, reg, val);
+			break;
+		case SWITCH_REG_TYPE_QCA8386:
+		default:
+			qca8386_write(mii_bus, reg, val);
+			break;
+	}
 }
 
 static inline void qca_mht_clk_enable(struct mii_bus *mii_bus, u32 reg)
@@ -831,6 +902,8 @@ static int qca_mdio_probe(struct platform_device *pdev)
 	am->mii_bus->priv = am;
 	am->mii_bus->parent = &pdev->dev;
 	am->preinit = qca_mht_preinit;
+	am->sw_read = qca_mii_read;
+	am->sw_write = qca_mii_write;
 	snprintf(am->mii_bus->id, MII_BUS_ID_SIZE, "%s", dev_name(&pdev->dev));
 
 	for (i = 0; i < PHY_MAX_ADDR; i++) {
