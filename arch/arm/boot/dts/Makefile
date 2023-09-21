@@ -830,8 +830,7 @@ dtb-$(CONFIG_ARCH_OXNAS) += \
 	ox820-cloudengines-pogoplug-series-3.dtb
 ifeq ($(CONFIG_IPQ_FLASH_16M_PROFILE),y)
 dtb-$(CONFIG_ARCH_QCOM) += \
-	ipq5332-mi04.1-c2.dtb \
-	ipq5332-mi01.3-c2.dtb
+	ipq5332-mi04.1-c2.dtb
 else
 dtb-$(CONFIG_ARCH_QCOM) += \
 	qcom-apq8060-dragonboard.dtb \
