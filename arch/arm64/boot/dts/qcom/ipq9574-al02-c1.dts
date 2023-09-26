@@ -111,7 +111,7 @@
 				bias-disable;
 			};
 
-			gps_pins: gps_pins {
+			/*gps_pins: gps_pins {
 				blsp3_uart_pinmux {
 					pins = "gpio17", "gpio18";
 					function = "blsp3_uart";
@@ -125,11 +125,23 @@
 					drive-strength = <8>;
 					bias-pull-down;
 				};
-			};
+			};*/
 
 			leds_pins: leds_pinmux {
-				led0_2g {
-					pins = "gpio64";
+				led0_g {
+					pins = "gpio16";
+					function = "gpio";
+					drive-strength = <8>;
+					bias-pull-up;
+				};
+				led0_b {
+					pins = "gpio17";
+					function = "gpio";
+					drive-strength = <8>;
+					bias-pull-up;
+				};
+				led0_r {
+					pins = "gpio6";
 					function = "gpio";
 					drive-strength = <8>;
 					bias-pull-up;
@@ -181,12 +193,12 @@
 				bias-pull-down;
 			};
 
-			i2c_3_pins: i2c-3-pins {
+			/*i2c_3_pins: i2c-3-pins {
 				pins = "gpio15", "gpio16";
 				function = "blsp3_i2c";
 				drive-strength = <8>;
 				bias-disable;
-			};
+			};*/
 
 			mdio_pins: mdio_pinmux {
 				mux_0 {
@@ -203,7 +215,7 @@
 				};
 			};
 
-			audio_pins_pri: audio_pinmux_pri {
+/*			audio_pins_pri: audio_pinmux_pri {
 				mux_1 {
 					pins = "gpio41";
 					function = "audio_pri";
@@ -263,9 +275,10 @@
 				};
 			};
 
+*/
 			button_pins: button_pins {
-				wps_button {
-					pins = "gpio37";
+				fr_button {
+					pins = "gpio10";
 					function = "gpio";
 					drive-strength = <8>;
 					bias-pull-up;
@@ -315,11 +328,11 @@
 			status = "ok";
 		};
 
-		blsp1_uart3: serial@78b2000 {
+		/*blsp1_uart3: serial@78b2000 {
 			pinctrl-0 = <&gps_pins>;
 			pinctrl-names = "default";
 			status = "ok";
-		};
+		};*/
 
 		blsp1_uart4: serial@78b3000 {
 			pinctrl-0 = <&QCC710_pins &pta_QCC710>;
@@ -327,14 +340,14 @@
 			status = "ok";
 		};
 
-		pcm: pcm@0xA3C0000{
+/*		pcm: pcm@0xA3C0000{
 			pinctrl-0 = <&audio_pins_pri>;
 			pinctrl-1 = <&audio_pins_sec>;
 			pinctrl-names = "primary",
 					 "secondary";
 			status = "disabled";
 		};
-
+*/
 		gpio_keys {
 			compatible = "gpio-keys";
 			pinctrl-0 = <&button_pins>;
@@ -342,13 +355,13 @@
 			status = "ok";
 
 			button@1 {
-				label = "wps";
-				linux,code = <KEY_WPS_BUTTON>;
-				gpios = <&tlmm 37 GPIO_ACTIVE_LOW>;
+				label = "reset";
+				linux,code = <KEY_RESTART>;
+				gpios = <&tlmm 10 GPIO_ACTIVE_LOW>;
 				linux,input-type = <1>;
 				debounce-interval = <60>;
 			};
-		};
+		}; 
 
 		dp1 {
 			device_type = "network";
@@ -402,15 +415,15 @@
 			device_type = "network";
 			compatible = "qcom,nss-dp";
 			qcom,id = <5>;
-			reg = <0x3a510000 0x4000>;
-			qcom,mactype = <1>;
+			reg = <0x3a001800 0x200>;
+			qcom,mactype = <0>;
 			qcom,link-poll = <1>;
 			local-mac-address = [000000000000];
-			qcom,phy-mdio-addr = <8>;
+			qcom,phy-mdio-addr = <20>;
 			phy-mode = "sgmii";
 		};
 
-		dp6 {
+/*		dp6 {
 			device_type = "network";
 			compatible = "qcom,nss-dp";
 			qcom,id = <6>;
@@ -420,7 +433,7 @@
 			local-mac-address = [000000000000];
 			qcom,phy-mdio-addr = <0>;
 			phy-mode = "sgmii";
-		};
+		}; */
 
 		license_manager {
 			compatible = "qti,license-manager-service";
@@ -483,7 +496,7 @@
 			status = "ok";
 		};
 
-		i2c_3: i2c@78b8000 {
+		/*i2c_3: i2c@78b8000 {
 			status = "ok";
 			pinctrl-0 = <&i2c_3_pins>;
 			pinctrl-names = "default";
@@ -493,7 +506,7 @@
 				reg = <0x77>;
 			};
 
-		};
+		};*/
 
 		usb: usb3@8A00000 {
 			status = "ok";
@@ -511,11 +524,23 @@
 			compatible = "gpio-leds";
 			pinctrl-0 = <&leds_pins>;
 			pinctrl-names = "default";
-			led@64 {
-				label = "led0_2g";
-				gpios = <&tlmm 64 GPIO_ACTIVE_LOW>;
-				linux,default-trigger = "led_2g";
+			led@16 {
+				label = "led0_g";
+				gpios = <&tlmm 16 GPIO_ACTIVE_LOW>;
+				linux,default-trigger = "led_g";
 				default-state = "off";
+			};
+			led@17 {
+				label = "led0_b";
+				gpios = <&tlmm 17 GPIO_ACTIVE_LOW>;
+				linux,default-trigger = "led_b";
+				default-state = "off";
+			};
+			led@6 {
+				label = "led0_r";
+				gpios = <&tlmm 6 GPIO_ACTIVE_LOW>;
+				linux,default-trigger = "led_r";
+				default-state = "on";
 			};
 		};
 
@@ -537,51 +562,10 @@
 			pinctrl-0 = <&pci1_pin>;
 			pinctrl-names = "default";
 			perst-gpio = <&tlmm 26 1>;
-			status = "disabled";
+			status = "ok";
 			pcie1_rp {
 				reg = <0 0 0 0 0>;
-			};
-		};
-
-		pcie1_phy: phy@fc000 {
-			status = "disabled";
-		};
-
-		pcie2_x2: pci@20000000 {
-			pinctrl-0 = <&pci2_pin>;
-			pinctrl-names = "default";
-			perst-gpio = <&tlmm 29 1>;
-			status = "ok";
-			pcie2_rp {
-				reg = <0 0 0 0 0>;
-
-				wifi@2 {
-					reg = <0 0 0 0 0>;
-					qrtr_instance_id = <0x20>;
-#if defined(__CNSS2__)
-					memory-region = <0>,<&mhi_region0>;
-#else
-					memory-region = <&qcn9000_pcie0>;
-					qcom,board_id = <0xa4>;
-#endif
-					status = "ok";
-				};
-			};
-		};
-
-		pcie2_phy: phy@8c000 {
-			status = "ok";
-		};
-
-		pcie3_x2: pci@18000000 {
-			pinctrl-0 = <&pci3_pin>;
-			pinctrl-names = "default";
-			perst-gpio = <&tlmm 32 1>;
-			status = "ok";
-			pcie3_rp {
-				reg = <0 0 0 0 0>;
-
-				wifi@3 {
+				wifi@1 {
 					reg = <0 0 0 0 0>;
 					qrtr_instance_id = <0x21>;
 #if defined(__CNSS2__)
@@ -595,8 +579,37 @@
 			};
 		};
 
-		pcie3_phy: phy@f4000 {
+		pcie1_phy: phy@fc000 {
 			status = "ok";
+		};
+
+		pcie2_x2: pci@20000000 {
+			pinctrl-0 = <&pci2_pin>;
+			pinctrl-names = "default";
+			perst-gpio = <&tlmm 29 1>;
+			status = "disabled";
+			pcie2_rp {
+				reg = <0 0 0 0 0>;
+
+			};
+		};
+
+		pcie2_phy: phy@8c000 {
+			status = "disabled";
+		};
+
+		pcie3_x2: pci@18000000 {
+			pinctrl-0 = <&pci3_pin>;
+			pinctrl-names = "default";
+			perst-gpio = <&tlmm 32 1>;
+			status = "disabled";
+			pcie3_rp {
+				reg = <0 0 0 0 0>;
+			};
+		};
+
+		pcie3_phy: phy@f4000 {
+			status = "disabled";
 		};
 
 		mdio@90000 {
@@ -618,13 +631,12 @@
 				reg = <19>;
 			};
 			phy4: ethernet-phy@4 {
-				compatible ="ethernet-phy-ieee802.3-c45";
-				reg = <8>;
+				reg = <20>;
 			};
-			phy5: ethernet-phy@5 {
+/*			phy5: ethernet-phy@5 {
 				compatible ="ethernet-phy-ieee802.3-c45";
 				reg = <0>;
-			};
+			};*/
 		};
 
 		ess-instance {
@@ -632,9 +644,9 @@
 			ess-switch@3a000000 {
 				switch_cpu_bmp = <0x1>;  /* cpu port bitmap */
 				switch_lan_bmp = <0x3e>; /* lan port bitmap */
-				switch_wan_bmp = <0x40>; /* wan port bitmap */
+//				switch_wan_bmp = <0x40>; /* wan port bitmap */
 				switch_mac_mode = <0x0>; /* mac mode for uniphy instance0*/
-				switch_mac_mode1 = <0xd>; /* mac mode for uniphy instance1*/
+				switch_mac_mode1 = <0xff>; /* mac mode for uniphy instance1*/
 				switch_mac_mode2 = <0xd>; /* mac mode for uniphy instance2*/
 				bm_tick_mode = <0>; /* bm tick mode */
 				tm_tick_mode = <0>; /* tm tick mode */
@@ -658,14 +670,13 @@
 					};
 					port@4 {
 						port_id = <5>;
-						phy_address = <8>;
-						ethernet-phy-ieee802.3-c45;
+						phy_address = <20>;
 					};
-					port@5 {
+/*					port@5 {
 						port_id = <6>;
 						phy_address = <0>;
 						ethernet-phy-ieee802.3-c45;
-					};
+					};*/
 				};
 
 			};
@@ -749,7 +760,7 @@
 
 &wifi0 {
        // 1 below indicates GPIO is active low
-       led-gpio = <&tlmm 64 1>;
+       //led-gpio = <&tlmm 64 1>;
        qcom,board_id = <0x20>;
        status = "ok";
 };
@@ -808,7 +819,7 @@
 	hremote_node = <&qcn9000_pcie0>;
 	caldb-size = <0x800000>;
 	board_id = <0xa4>;
-	status = "ok";
+	status = "disabled";
 #endif
 };
 
@@ -865,7 +876,7 @@
 #endif
 	hremote_node = <&qcn9000_pcie1>;
 	caldb-size = <0x800000>;
-	board_id = <0xa3>;
+	board_id = <0xa0>;
 	status = "ok";
 #endif
 };
