@@ -157,7 +157,7 @@ static void __init ath79_detect_sys_type(void)
 
 	case REV_ID_MAJOR_QCA9533:
 		ath79_soc = ATH79_SOC_QCA9533;
-		chip = "9533";
+		chip = "4531";
 		rev = id & QCA953X_REV_ID_REVISION_MASK;
 		break;
 
