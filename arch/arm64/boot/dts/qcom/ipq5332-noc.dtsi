@@ -22,13 +22,17 @@
 		    <0x583000 0x48c>,
 		    <0x402800 0x424>,
 		    <0x405000 0x484>,
-		    <0x582000 0x504>;
+		    <0x582000 0x504>,
+		    <0x400000 0x5500>,
+		    <0x580000 0x2500>;
 		reg-names =  "memnoc_dbhn_tprobe_base",
 			"snoc_memnoc_tprobe_base_0",
 			"snoc_memnoc_tprobe_base_1",
 			"memnoc_dtb_tprobe_base",
 			"memnoc_ec_base",
-			"snoc_ec_base";
+			"snoc_ec_base",
+			"memnoc_phy_base",
+			"snoc_phy_base";
 		memnoc_phy_addr_base = <0x400000>;
 		snoc_phy_addr_base = <0x580000>;
 		num_sys_bus = <2>;
