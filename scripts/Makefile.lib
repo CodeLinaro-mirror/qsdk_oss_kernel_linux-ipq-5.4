@@ -196,6 +196,10 @@ ifeq ($(CONFIG_CPU_THERMAL),y)
 dtc_cpp_flags += -D __CPU_THERMAL__
 endif
 
+ifeq ($(CONFIG_QCOM_NON_SECURE_PIL),y)
+dtc_cpp_flags += -D __QCOM_NON_SECURE_PIL__
+endif
+
 # Useful for describing the dependency of composite objects
 # Usage:
 #   $(call multi_depend, multi_used_targets, suffix_to_remove, suffix_to_add)
