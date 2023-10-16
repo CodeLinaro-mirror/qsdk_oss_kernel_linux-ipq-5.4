@@ -379,6 +379,13 @@ config ALLOC_SKB_PAGE_FRAG_DISABLE
 	---help---
 	 Disable page fragment based allocations for skbuff payloads.
 
+config SKB_FAST_RECYCLABLE_DEBUG_ENABLE
+	bool "Enable debug API for fast recycled skbs"
+	depends on SKB_RECYCLER
+	default n
+	---help---
+	Enable debug API for fast recycled skbs.
+
 menu "Network testing"
 
 config NET_PKTGEN
