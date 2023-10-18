@@ -87,6 +87,7 @@
 			enable-method = "psci";
 			next-level-cache = <&L2_0>;
 			clocks = <&apcs_glb APCS_ALIAS0_CORE_CLK>;
+			clock-names = "cpu";
 			operating-points-v2 = <&cpu_opp_table>;
 		};
 
@@ -97,6 +98,7 @@
 			reg = <0x1>;
 			next-level-cache = <&L2_0>;
 			clocks = <&apcs_glb APCS_ALIAS0_CORE_CLK>;
+			clock-names = "cpu";
 			operating-points-v2 = <&cpu_opp_table>;
 		};
 
@@ -107,6 +109,7 @@
 			reg = <0x2>;
 			next-level-cache = <&L2_0>;
 			clocks = <&apcs_glb APCS_ALIAS0_CORE_CLK>;
+			clock-names = "cpu";
 			operating-points-v2 = <&cpu_opp_table>;
 		};
 
@@ -117,6 +120,7 @@
 			reg = <0x3>;
 			next-level-cache = <&L2_0>;
 			clocks = <&apcs_glb APCS_ALIAS0_CORE_CLK>;
+			clock-names = "cpu";
 			operating-points-v2 = <&cpu_opp_table>;
 		};
 
