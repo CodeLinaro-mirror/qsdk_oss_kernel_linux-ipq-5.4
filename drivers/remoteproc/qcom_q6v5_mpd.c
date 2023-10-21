@@ -9,13 +9,17 @@
 #include <linux/io.h>
 #include <linux/iopoll.h>
 #include <linux/kernel.h>
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
 #include <linux/mfd/syscon.h>
+#endif
 #include <linux/module.h>
 #include <linux/of_address.h>
 #include <linux/of_device.h>
 #include <linux/of_reserved_mem.h>
 #include <linux/platform_device.h>
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
 #include <linux/regmap.h>
+#endif
 #include <linux/reset.h>
 #include <linux/soc/qcom/mdt_loader.h>
 #include <linux/soc/qcom/smem.h>
@@ -42,14 +46,17 @@
 #define Q6_BOOT_TRIG_CMD_ID		0x2
 
 /* Q6SS Register Offsets */
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
 #define Q6SS_RESET_REG			0x014
 #define Q6SS_DBG_CFG                    0x018
 #define Q6SS_GFMUX_CTL_REG		0x020
 #define Q6SS_PWR_CTL_REG		0x030
 #define Q6SS_MEM_PWR_CTL		0x0B0
+#endif
 #define Q6SS_STRAP_ACC			0x110
 #define Q6SS_CGC_OVERRIDE		0x034
 #define Q6SS_BCR_REG			0x6000
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
 #define Q6SS_BOOT_CORE_START		0x400
 #define Q6SS_BOOT_CMD                   0x404
 #define Q6SS_BOOT_STATUS		0x408
@@ -68,21 +75,27 @@
 #define Q6SS_STOP_CORE			BIT(0)
 #define Q6SS_CORE_ARES			BIT(1)
 #define Q6SS_BUS_ARES_ENABLE		BIT(2)
+#endif
 
 /* Q6SS_BRC_RESET */
 #define Q6SS_BRC_BLK_ARES		BIT(0)
 
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
 /* Q6SS_GFMUX_CTL */
 #define Q6SS_CLK_ENABLE			BIT(1)
+#endif
 #define Q6SS_SWITCH_CLK_SRC		BIT(8)
 
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
 /* Q6SS_PWR_CTL */
 #define Q6SS_L2DATA_STBY_N		BIT(18)
 #define Q6SS_SLP_RET_N			BIT(19)
 #define Q6SS_CLAMP_IO			BIT(20)
 #define QDSS_BHS_ON			BIT(21)
+#endif
 #define QDSS_Q6_MEMORIES		GENMASK(15, 0)
 
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
 /* Q6SS parameters */
 #define Q6SS_LDO_BYP		BIT(25)
 #define Q6SS_BHS_ON		BIT(24)
@@ -94,8 +107,10 @@
 #define Q6SS_CORE_CBCR         BIT(5)
 #define Q6SS_TIMEOUT_US         1000
 #define MSIP_TIMEOUT_US         1
+#endif
 
 /* Q6SS config/status registers */
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
 #define TCSR_GLOBAL_CFG0	0x0
 #define TCSR_GLOBAL_CFG1	0x4
 #define TCSR_APU_REG0		0x1000
@@ -107,7 +122,9 @@
 #define Q6SS_RST_EVB		0x10
 
 #define BHS_EN_REST_ACK		BIT(0)
+#endif
 #define WCSS_HM_RET		BIT(1)
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
 #define SSCAON_ENABLE		BIT(13)
 #define SSCAON_BUS_EN		BIT(15)
 #define SSCAON_BUS_MUX_MASK	GENMASK(18, 16)
@@ -118,6 +135,7 @@
 #define TCSR_WCSS_CLK_ENABLE	0x14
 
 #define MAX_HALT_REG		4
+#endif
 
 #define WCNSS_PAS_ID		6
 #define MPD_WCNSS_PAS_ID        0xD
@@ -127,6 +145,7 @@
 #define REMOTE_PID	1
 #define Q6_BOOT_ARGS_SMEM_SIZE 4096
 
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
 #define AXIS_CBCR		0x60
 #define DBG_IFC_APB_BDG_CBCR	0x48
 #define DBG_IFC_NTS_CBCR	0x40
@@ -157,6 +176,7 @@
 #define MST_BDG_RESET_ACK	0x4
 #define SLV_BDG_RESET_REQ	0x8
 #define SLV_BDG_RESET_ACK	0xc
+#endif
 
 #define RPD_SWID		MPD_WCNSS_PAS_ID
 #define UPD_SWID		0x12
@@ -165,17 +185,21 @@
 
 #define AHB_ASID		0x1
 
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
 #define TURBO_FREQ	533333333
 #define NOMIN_FREQ	480000000
+#endif
 
 #define UPD_BOOTARGS_HEADER_TYPE	0x2
 #define LIC_BOOTARGS_HEADER_TYPE	0x3
 
 static const struct wcss_data q6_ipq5332_res_init;
 static int debug_wcss;
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
 static int userpd1_bootaddr;
 static int userpd2_bootaddr;
 static int userpd3_bootaddr;
+#endif
 static struct dentry *heartbeat_hdl;
 
 /**
@@ -212,7 +236,9 @@ enum q6_bootargs_version {
 
 struct q6_wcss {
 	struct device *dev;
+	u32 reset_cmd_id;
 
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
 	void __iomem *reg_base;
 	void __iomem *rmb_base;
 	void __iomem *wcmn_base;
@@ -226,7 +252,6 @@ struct q6_wcss {
 	u32 halt_q6;
 	u32 halt_wcss;
 	u32 halt_nc;
-	u32 reset_cmd_id;
 
 	struct clk *xo;
 	struct clk *ahbfabric_cbcr_clk;
@@ -265,16 +290,17 @@ struct q6_wcss {
 	int num_clks;
 	struct clk_bulk_data *cfg_clks;			//get configurable clocks and use
 	int num_cfg_clks;
-
+#endif
 	struct qcom_rproc_glink glink_subdev;
 	struct qcom_rproc_ssr ssr_subdev;
-	struct qcom_sysmon *sysmon;
 
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
+	struct qcom_sysmon *sysmon;
 	struct reset_control *wcss_aon_reset;
 	struct reset_control *wcss_reset;
 	struct reset_control *wcss_q6_reset;
 	struct reset_control *ce_reset;
-
+#endif
 	struct qcom_q6v5 q6;
 
 	phys_addr_t mem_phys;
@@ -288,42 +314,57 @@ struct q6_wcss {
 	bool need_mem_protection;
 	u8 pd_asid;
 	enum q6_wcss_state state;
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
 	bool backdoor;
 	bool is_emulation;
+#endif
 	bool is_fw_shared;
 	int (*mdt_load_sec)(struct device *dev, const struct firmware *fw,
 			const char *fw_name, int pas_id, void *mem_region,
 			phys_addr_t mem_phys, size_t mem_size,
 			phys_addr_t *reloc_base);
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
 	int (*mdt_load_nosec)(struct device *dev, const struct firmware *fw,
 			const char *fw_name, int pas_id, void *mem_region,
 			phys_addr_t mem_phys, size_t mem_size,
 			phys_addr_t *reloc_base);
+#endif
 };
 
 struct wcss_data {
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
 	int (*init_clock)(struct q6_wcss *wcss);
+#endif
 	int (*init_irq)(struct qcom_q6v5 *q6, struct platform_device *pdev,
 				struct rproc *rproc, int remote_id,
 				int crash_reason,
 				void (*handover)(struct qcom_q6v5 *q6));
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
 	int (* q6_clk_enable)(struct q6_wcss *wcss);
 	int (* wcss_clk_enable)(struct q6_wcss *wcss);
 	void (* q6_clk_disable)(struct q6_wcss *wcss);
 	void (* wcss_clk_disable)(struct q6_wcss *wcss);
 	int (*q6_clk_set_rate)(struct q6_wcss *wcss);
+#endif
 	const char *q6_firmware_name;
 	int crash_reason_smem;
 	int remote_id;
 	u32 version;
 	u32 reset_cmd_id;
+
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
 	bool aon_reset_required;
 	bool wcss_q6_reset_required;
 	bool wcss_reset_required;
 	bool ce_reset_required;
+#endif
 	const char *ssr_name;
+
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
 	const char *sysmon_name;
 	int ssctl_id;
+#endif
+
 	const struct rproc_ops *ops;
 	bool requires_force_stop;
 	bool need_mem_protection;
@@ -331,20 +372,27 @@ struct wcss_data {
 	bool glink_subdev_required;
 	u8 pd_asid;
 	bool reset_seq;
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
 	bool halt_v2;
+#endif
 	enum q6_version q6ver;
 	bool is_fw_shared;
 	int (*mdt_load_sec)(struct device *dev, const struct firmware *fw,
 			const char *fw_name, int pas_id, void *mem_region,
 			phys_addr_t mem_phys, size_t mem_size,
 			phys_addr_t *reloc_base);
+
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
 	int (*mdt_load_nosec)(struct device *dev, const struct firmware *fw,
 			const char *fw_name, int pas_id, void *mem_region,
 			phys_addr_t mem_phys, size_t mem_size,
 			phys_addr_t *reloc_base);
+#endif
 	u32 pasid;
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
 	bool q6_reg_base_protected;
 	bool reset_dbg_reg;
+#endif
 	u8 bootargs_version;
 	bool clear_smp2p_last_value;
 };
@@ -549,6 +597,7 @@ static void crashdump_init(struct rproc *rproc,
 }
 #endif
 
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
 static int ipq5018_clks_prepare_enable(struct q6_wcss *wcss)
 {
 	int ret;
@@ -1487,7 +1536,7 @@ static int q6_wcss_reset(struct q6_wcss *wcss)
 
 	return 0;
 }
-
+#endif
 static int handle_upd_in_rpd_crash(void *data)
 {
 	struct rproc *rpd_rproc = data, *upd_rproc;
@@ -1565,8 +1614,10 @@ static int q6_wcss_start(struct rproc *rproc)
 	struct rproc *upd_rproc;
 	struct q6_wcss *upd_wcss;
 	const struct wcss_data *desc;
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
 	int loop = 0;
 	uint32_t val;
+#endif
 
 	desc = of_device_get_match_data(wcss->dev);
 	if (!desc)
@@ -1577,8 +1628,10 @@ static int q6_wcss_start(struct rproc *rproc)
 	if (desc->clear_smp2p_last_value)
 		qcom_clear_smp2p_last_value();
 
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
 	if (desc->q6_clk_set_rate)
 		desc->q6_clk_set_rate(wcss);
+#endif
 
 	if (wcss->need_mem_protection) {
 		ret = qcom_scm_pas_auth_and_reset(desc->pasid, debug_wcss,
@@ -1590,6 +1643,7 @@ static int q6_wcss_start(struct rproc *rproc)
 		goto wait_for_reset;
 	}
 
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
 	/* Release Q6 and WCSS reset */
 	ret = reset_control_deassert(wcss->wcss_reset);
 	if (ret) {
@@ -1640,7 +1694,7 @@ static int q6_wcss_start(struct rproc *rproc)
 
 	if (ret)
 		goto wcss_q6_reset;
-
+#endif
 wait_for_reset:
 	ret = qcom_q6v5_wait_for_start(&wcss->q6, msecs_to_jiffies(10000));
 	if (ret == -ETIMEDOUT) {
@@ -1650,6 +1704,7 @@ wait_for_reset:
 			dev_err(wcss->dev, "start timed out\n");
 	}
 
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
 	/*reset done clear the debug register*/
 	if (debug_wcss && desc->reset_dbg_reg)
 		writel(0x0, wcss->reg_base + Q6SS_DBG_CFG);
@@ -1666,7 +1721,7 @@ wait_for_reset:
 		}
 		dev_info(wcss->dev, "QDSP6SS Version : 0x%x\n", val);
 	}
-
+#endif
 	/* start userpd's, if root pd getting recovered*/
 	if (wcss->state == WCSS_RESTARTING) {
 		char thread_name[32];
@@ -1699,13 +1754,16 @@ wait_for_reset:
 
 	return ret;
 
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
 wcss_q6_reset:
 	reset_control_assert(wcss->wcss_q6_reset);
 
 wcss_reset:
 	reset_control_assert(wcss->wcss_reset);
+
 	if (debug_wcss)
 		writel(0x0, wcss->reg_base + Q6SS_DBG_CFG);
+#endif
 
 	if (lic_param.buf) {
 		lm_free_license(lic_param.buf, lic_param.dma_buf, lic_param.size);
@@ -1769,10 +1827,12 @@ static int wcss_ipq5332_ahb_pd_start(struct rproc *rproc)
 	int ret;
 	const struct wcss_data *desc;
 	u8 pd_asid;
-	u32 val, pasid;
+	u32 pasid;
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
+	u32 val;
 	struct rproc *rpd_rproc = dev_get_drvdata(wcss->dev->parent);
 	struct q6_wcss *rpd_wcss = rpd_rproc->priv;
-
+#endif
 	desc = of_device_get_match_data(wcss->dev);
 	if (!desc)
 		return -EINVAL;
@@ -1788,6 +1848,7 @@ static int wcss_ipq5332_ahb_pd_start(struct rproc *rproc)
 		goto spawn_pd;
 	}
 
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
 	/* AON Reset */
 	ret = reset_control_deassert(wcss->wcss_aon_reset);
 	if (ret) {
@@ -1838,7 +1899,7 @@ static int wcss_ipq5332_ahb_pd_start(struct rproc *rproc)
 		}
 	}
 	goto state;
-
+#endif
 spawn_pd:
 	if (wcss->q6.spawn_bit) {
 		ret = q6_wcss_spawn_pd(rproc);
@@ -1846,7 +1907,9 @@ spawn_pd:
 			return ret;
 	}
 
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
 state:
+#endif
 	wcss->state = WCSS_NORMAL;
 
 	return ret;
@@ -1856,11 +1919,14 @@ static int wcss_ahb_pd_start(struct rproc *rproc)
 {
 	struct q6_wcss *wcss = rproc->priv;
 	int ret = 0;
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
 	u32 val;
+#endif
 	const struct wcss_data *desc;
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
 	struct rproc *rpd_rproc = dev_get_drvdata(wcss->dev->parent);
 	struct q6_wcss *rpd_wcss = rpd_rproc->priv;
-
+#endif
 	desc = of_device_get_match_data(wcss->dev);
 	if (!desc)
 		return -EINVAL;
@@ -1877,6 +1943,7 @@ static int wcss_ahb_pd_start(struct rproc *rproc)
 		goto spawn_pd;
 	}
 
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
 	/* AON Reset */
 	ret = reset_control_deassert(wcss->wcss_aon_reset);
 	if (ret) {
@@ -1945,7 +2012,7 @@ static int wcss_ahb_pd_start(struct rproc *rproc)
 			return ret;
 		}
 	}
-
+#endif
 spawn_pd:
 	if (wcss->q6.spawn_bit) {
 		ret = q6_wcss_spawn_pd(rproc);
@@ -1953,6 +2020,7 @@ spawn_pd:
 			return ret;
 	}
 
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
 	if (rpd_wcss->wcmn_base) {
 		val = readl(rpd_wcss->wcmn_base);
 		if (!val) {
@@ -1961,7 +2029,7 @@ spawn_pd:
 		}
 		dev_info(wcss->dev, "WCSS Version : 0x%x\n", val);
 	}
-
+#endif
 	wcss->state = WCSS_NORMAL;
 
 	return ret;
@@ -1972,10 +2040,12 @@ static int wcss_ipq5332_pcie_pd_start(struct rproc *rproc)
 	int ret;
 	struct q6_wcss *wcss = rproc->priv;
 	u8 pd_asid;
-	u32 val, pasid;
+	u32 pasid;
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
+	u32 val;
 	struct rproc *rpd_rproc = dev_get_drvdata(wcss->dev->parent);
 	struct q6_wcss *rpd_wcss = rpd_rproc->priv;
-
+#endif
 	pd_asid = qcom_get_pd_asid(wcss->dev->of_node);
 	if (wcss->need_mem_protection) {
 		pasid = (pd_asid << 8) | UPD_SWID,
@@ -1987,6 +2057,7 @@ static int wcss_ipq5332_pcie_pd_start(struct rproc *rproc)
 		goto spawn_pd;
 	}
 
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
 	val =  TCSR_APU_REG0_VAL | (pd_asid << 16);
 	regmap_write(wcss->halt_map, wcss->halt_nc + TCSR_APU_REG0, val);
 	if (wcss->is_emulation)
@@ -1994,7 +2065,7 @@ static int wcss_ipq5332_pcie_pd_start(struct rproc *rproc)
 	regmap_write(wcss->halt_map, wcss->halt_nc + TCSR_APU_REG1,
 					rproc->bootaddr);
 	writel(0x00000010, rpd_wcss->l2vic_base);
-
+#endif
 spawn_pd:
 	ret = q6_wcss_spawn_pd(rproc);
 	if (!ret)
@@ -2015,6 +2086,7 @@ static int wcss_pcie_pd_start(struct rproc *rproc)
 	return ret;
 }
 
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
 static void q6v7_wcss_halt_axi_port(struct q6_wcss *wcss,
 				    struct regmap *halt_map,
 				    u32 offset)
@@ -2313,6 +2385,7 @@ reset:
 
 	return 0;
 }
+#endif
 
 static int q6_wcss_stop(struct rproc *rproc)
 {
@@ -2409,11 +2482,12 @@ static int q6_wcss_stop(struct rproc *rproc)
 		}
 	}
 
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
 	/* Q6 Power down */
 	ret = q6_powerdown(wcss);
 	if (ret)
 		return ret;
-
+#endif
 pas_done:
 	debugfs_remove(heartbeat_hdl);
 	qcom_q6v5_unprepare(&wcss->q6);
@@ -2542,6 +2616,7 @@ static int wcss_ipq5332_ahb_pd_stop(struct rproc *rproc)
 		goto shut_dn_rpd;
 	}
 
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
 	if (q6_offload)
 		goto shut_dn_rpd;
 
@@ -2564,7 +2639,7 @@ static int wcss_ipq5332_ahb_pd_stop(struct rproc *rproc)
 
 	/* Deassert WCSS reset */
 	reset_control_deassert(wcss->wcss_reset);
-
+#endif
 shut_dn_rpd:
 	if (rproc->state != RPROC_CRASHED)
 		rproc_shutdown(rpd_rproc);
@@ -2603,6 +2678,7 @@ static int wcss_ahb_pd_stop(struct rproc *rproc)
 		goto shut_dn_rpd;
 	}
 
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
 	/* WCSS powerdown */
 	ret = q6_wcss_powerdown(wcss);
 	if (ret) {
@@ -2631,7 +2707,7 @@ static int wcss_ahb_pd_stop(struct rproc *rproc)
 
 	/* Deassert WCSS reset */
 	reset_control_deassert(wcss->wcss_reset);
-
+#endif
 shut_dn_rpd:
 	if (rproc->state != RPROC_CRASHED)
 		rproc_shutdown(rpd_rproc);
@@ -2987,8 +3063,10 @@ static int q6_wcss_load(struct rproc *rproc, const struct firmware *fw)
 	struct device_node *upd_np, *temp;
 	struct platform_device *upd_pdev;
 
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
 	if (wcss->backdoor)
 		return 0;
+#endif
 
 	/* Share boot args to Q6 remote processor */
 	ret = share_bootargs_to_q6(wcss->dev);
@@ -3097,9 +3175,12 @@ static int wcss_ahb_pcie_pd_load(struct rproc *rproc, const struct firmware *fw)
 				     wcss->mem_phys, wcss->mem_size,
 				     &wcss->mem_reloc);
 	}
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
 	return wcss->mdt_load_nosec(wcss->dev, fw, rproc->firmware,
 				     0, wcss->mem_region, wcss->mem_phys,
 				     wcss->mem_size, &wcss->mem_reloc);
+#endif
+	return 0;
 }
 
 int q6_wcss_register_dump_segments(struct rproc *rproc,
@@ -3167,6 +3248,7 @@ static const struct rproc_ops wcss_pcie_ipq5332_ops = {
 	.parse_fw = q6_wcss_register_dump_segments,
 };
 
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
 static int q6_wcss_init_reset(struct q6_wcss *wcss,
 				const struct wcss_data *desc)
 {
@@ -3348,7 +3430,7 @@ static int q6_wcss_init_mmio(struct q6_wcss *wcss,
 	}
 	return 0;
 }
-
+#endif
 static int q6_alloc_memory_region(struct q6_wcss *wcss)
 {
 	struct reserved_mem *rmem = NULL;
@@ -3390,6 +3472,7 @@ static int q6_alloc_memory_region(struct q6_wcss *wcss)
 	return 0;
 }
 
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
 static int ipq5018_init_wcss_clock(struct q6_wcss *wcss)
 {
 	int ret;
@@ -3679,7 +3762,7 @@ static int ipq9574_init_wcss_ahb_clock(struct q6_wcss *wcss)
 
 	return 0;
 }
-
+#endif
 static int q6_get_inbound_irq(struct qcom_q6v5 *q6,
 			struct platform_device *pdev, const char *int_name,
 			irqreturn_t (*handler)(int irq, void *data))
@@ -3844,25 +3927,31 @@ static int q6_wcss_probe(struct platform_device *pdev)
 	wcss->reset_cmd_id = desc->reset_cmd_id;
 	wcss->is_fw_shared = desc->is_fw_shared;
 	wcss->mdt_load_sec = desc->mdt_load_sec;
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
 	wcss->mdt_load_nosec = desc->mdt_load_nosec;
-
+#endif
 	if (nosec)
 		wcss->need_mem_protection = false;
 
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
 	if (of_property_read_bool(pdev->dev.of_node, "qcom,fw_shared")) {
 		wcss->is_fw_shared = true;
 		wcss->mdt_load_sec = qcom_mdt_load_pd_seg;
 		wcss->mdt_load_nosec = qcom_mdt_load_pd_seg_no_init;
 	}
+#endif
 
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
 	ret = q6_wcss_init_mmio(wcss, pdev);
 	if (ret)
 		goto free_rproc;
+#endif
 
 	ret = q6_alloc_memory_region(wcss);
 	if (ret)
 		goto free_rproc;
 
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
 	if (desc->init_clock) {
 		ret = desc->init_clock(wcss);
 		if (ret)
@@ -3885,7 +3974,7 @@ static int q6_wcss_probe(struct platform_device *pdev)
 		else
 			wcss->backdoor = true;
 	}
-
+#endif
 	wcss->pd_asid = qcom_get_pd_asid(wcss->dev->of_node);
 
 	if (desc->init_irq) {
@@ -3901,12 +3990,13 @@ static int q6_wcss_probe(struct platform_device *pdev)
 	subdev_name = (char *)(desc->ssr_name ? desc->ssr_name : pdev->name);
 	qcom_add_ssr_subdev(rproc, &wcss->ssr_subdev, subdev_name);
 
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
 	if (desc->sysmon_name)
 		wcss->sysmon = qcom_add_sysmon_subdev(rproc,
 						      desc->sysmon_name,
 						      desc->ssctl_id);
-
 	rproc->backdoor = wcss->backdoor;
+#endif
 	rproc->auto_boot = desc->need_auto_boot;
 	ret = rproc_add(rproc);
 	if (ret)
@@ -3931,10 +4021,12 @@ free_rproc:
 static int q6_wcss_remove(struct platform_device *pdev)
 {
 	struct rproc *rproc = platform_get_drvdata(pdev);
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
 	struct q6_wcss *wcss = rproc->priv;
 
 	if (wcss->wcmn_base)
 		iounmap(wcss->wcmn_base);
+#endif
 	rproc_del(rproc);
 	rproc_free(rproc);
 
@@ -3942,13 +4034,19 @@ static int q6_wcss_remove(struct platform_device *pdev)
 }
 
 static const struct wcss_data q6_ipq5332_res_init = {
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
 	.init_clock = ipq5332_init_q6_clock,
+#endif
 	.init_irq = qcom_q6v5_init,
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
 	.q6_clk_enable = ipq5332_q6_clk_enable,
 	.q6_clk_set_rate = ipq5332_q6_clk_set_rate,
+#endif
 	.crash_reason_smem = WCSS_CRASH_REASON,
 	.remote_id = WCSS_SMEM_HOST,
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
 	.wcss_q6_reset_required = true,
+#endif
 	.ssr_name = "q6wcss",
 	.reset_cmd_id = 0x18,
 	.ops = &q6_wcss_ipq5018_ops,
@@ -3957,18 +4055,24 @@ static const struct wcss_data q6_ipq5332_res_init = {
 	.q6ver = Q6V7,
 	.glink_subdev_required = true,
 	.pasid = RPD_SWID,
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
 	.q6_reg_base_protected = true,
+#endif
 	.bootargs_version = VERSION2,
 	.clear_smp2p_last_value = true,
 };
 
 static const struct wcss_data q6_ipq5018_res_init = {
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
 	.init_clock = ipq5018_init_q6_clock,
+#endif
 	.init_irq = qcom_q6v5_init,
 	.q6_firmware_name = "IPQ5018/q6_fw.mdt",
 	.crash_reason_smem = WCSS_CRASH_REASON,
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
 	.aon_reset_required = true,
 	.wcss_q6_reset_required = true,
+#endif
 	.ssr_name = "q6wcss",
 	.reset_cmd_id = 0x14,
 	.ops = &q6_wcss_ipq5018_ops,
@@ -3981,34 +4085,48 @@ static const struct wcss_data q6_ipq5018_res_init = {
 };
 
 static const struct wcss_data wcss_ahb_ipq5332_res_init = {
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
 	.init_clock = ipq5332_init_wcss_clock,
+#endif
 	.crash_reason_smem = WCSS_CRASH_REASON,
 	.remote_id = WCSS_SMEM_HOST,
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
 	.wcss_clk_enable = enable_ipq5332_wcss_clocks,
 	.wcss_clk_disable = disable_ipq5332_wcss_clocks,
+#endif
 	.init_irq = init_irq,
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
 	.aon_reset_required = true,
 	.wcss_reset_required = true,
 	.ce_reset_required = true,
+#endif
 	.ops = &wcss_ahb_ipq5332_ops,
 	.need_mem_protection = true,
 	.need_auto_boot = false,
 	.q6ver = Q6V7,
 	.version = WCSS_AHB_IPQ,
 	.reset_seq = true,
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
 	.halt_v2 = true,
+#endif
 	.mdt_load_sec = qcom_mdt_load,
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
 	.mdt_load_nosec = qcom_mdt_load_no_init,
+#endif
 };
 
 static const struct wcss_data wcss_ahb_ipq5018_res_init = {
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
 	.init_clock = ipq5018_init_wcss_clock,
+#endif
 	.init_irq = init_irq,
 	.q6_firmware_name = "IPQ5018/q6_fw.mdt",
 	.crash_reason_smem = WCSS_CRASH_REASON,
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
 	.aon_reset_required = true,
 	.wcss_reset_required = true,
 	.ce_reset_required = true,
+#endif
 	.ops = &wcss_ahb_ipq5018_ops,
 	.need_mem_protection = true,
 	.need_auto_boot = false,
@@ -4017,7 +4135,9 @@ static const struct wcss_data wcss_ahb_ipq5018_res_init = {
 	.reset_seq = true,
 	.is_fw_shared = true,
 	.mdt_load_sec = qcom_mdt_load_pd_seg,
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
 	.mdt_load_nosec = qcom_mdt_load_pd_seg_no_init,
+#endif
 	.pasid = MPD_WCNSS_PAS_ID,
 };
 
@@ -4032,7 +4152,9 @@ static const struct wcss_data wcss_pcie_ipq5332_res_init = {
 	.version = WCSS_PCIE_IPQ,
 	.is_fw_shared = false,
 	.mdt_load_sec = qcom_mdt_load,
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
 	.mdt_load_nosec = qcom_mdt_load_no_init,
+#endif
 };
 
 static const struct wcss_data wcss_pcie_ipq5018_res_init = {
@@ -4046,7 +4168,9 @@ static const struct wcss_data wcss_pcie_ipq5018_res_init = {
 	.version = WCSS_PCIE_IPQ,
 	.is_fw_shared = true,
 	.mdt_load_sec = qcom_mdt_load_pd_seg,
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
 	.mdt_load_nosec = qcom_mdt_load_pd_seg_no_init,
+#endif
 	.pasid = MPD_WCNSS_PAS_ID,
 };
 
@@ -4057,9 +4181,12 @@ static const struct wcss_data wcss_text_ipq5332_res_init = {
 	.q6ver = Q6V7,
 	.version = WCSS_AHB_IPQ,
 	.mdt_load_sec = qcom_mdt_load,
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
 	.mdt_load_nosec = qcom_mdt_load_no_init,
+#endif
 };
 
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
 static const struct wcss_data q6_ipq9574_res_init = {
 	.init_clock = ipq9574_init_q6_clock,
 	.init_irq = qcom_q6v5_init,
@@ -4118,23 +4245,30 @@ static const struct wcss_data wcss_pcie_ipq9574_res_init = {
 	.mdt_load_sec = qcom_mdt_load_pd_seg,
 	.mdt_load_nosec = qcom_mdt_load_pd_seg_no_init,
 };
+#endif
 
 static const struct of_device_id q6_wcss_of_match[] = {
 	{ .compatible = "qcom,ipq5018-q6-mpd", .data = &q6_ipq5018_res_init },
 	{ .compatible = "qcom,ipq5332-q6-mpd", .data = &q6_ipq5332_res_init },
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
 	{ .compatible = "qcom,ipq9574-q6-mpd", .data = &q6_ipq9574_res_init },
+#endif
 	{ .compatible = "qcom,ipq5018-wcss-ahb-mpd",
 		.data = &wcss_ahb_ipq5018_res_init },
 	{ .compatible = "qcom,ipq5332-wcss-ahb-mpd",
 		.data = &wcss_ahb_ipq5332_res_init },
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
 	{ .compatible = "qcom,ipq9574-wcss-ahb-mpd",
 		.data = &wcss_ahb_ipq9574_res_init },
+#endif
 	{ .compatible = "qcom,ipq5332-wcss-pcie-mpd",
 		.data = &wcss_pcie_ipq5332_res_init },
 	{ .compatible = "qcom,ipq5018-wcss-pcie-mpd",
 		.data = &wcss_pcie_ipq5018_res_init },
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
 	{ .compatible = "qcom,ipq9574-wcss-pcie-mpd",
 		.data = &wcss_pcie_ipq9574_res_init },
+#endif
 	{ .compatible = "qcom,ipq5332-mpd-upd-text",
 		.data = &wcss_text_ipq5332_res_init },
 	{ },
@@ -4151,9 +4285,10 @@ static struct platform_driver q6_wcss_driver = {
 };
 module_platform_driver(q6_wcss_driver);
 module_param(debug_wcss, int, 0644);
+#ifdef CONFIG_QCOM_NON_SECURE_PIL
 module_param(userpd1_bootaddr, int, 0644);
 module_param(userpd2_bootaddr, int, 0644);
 module_param(userpd3_bootaddr, int, 0644);
-
+#endif
 MODULE_DESCRIPTION("Hexagon WCSS Multipd Peripheral Image Loader");
 MODULE_LICENSE("GPL v2");
