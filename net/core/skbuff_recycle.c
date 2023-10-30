@@ -33,6 +33,8 @@ static struct global_recycler glob_recycler;
 static int skb_recycle_spare_max_skbs = SKB_RECYCLE_SPARE_MAX_SKBS;
 #endif
 
+static int skb_recycling_enable = 1;
+
 #ifdef CONFIG_DEBUG_MEM_USAGE
 #define mem_debug_update_skb(skb) \
 do { \
@@ -79,6 +81,11 @@ inline struct sk_buff *skb_recycler_alloc(struct net_device *dev,
 	struct sk_buff_head *h;
 	struct sk_buff *skb = NULL;
 	struct sk_buff *ln = NULL;
+
+	/* Allocate the recycled skbs if the skb_recycling_enable */
+	if (unlikely(!skb_recycling_enable)) {
+		return NULL;
+	}
 
 	if (unlikely(length > SKB_RECYCLE_SIZE))
 		return NULL;
@@ -186,6 +193,12 @@ inline bool skb_recycler_consume(struct sk_buff *skb)
 	unsigned long flags;
 	struct sk_buff_head *h;
 	struct sk_buff *ln = NULL;
+
+	/* Consume the skbs if the skb_recycling_enable */
+	if (unlikely(!skb_recycling_enable)) {
+		return false;
+	}
+
 	/* Can we recycle this skb?  If not, simply return that we cannot */
 	if (unlikely(!consume_skb_can_recycle(skb, SKB_RECYCLE_MIN_SIZE,
 					      SKB_RECYCLE_MAX_SIZE)))
@@ -295,7 +308,9 @@ inline bool skb_recycler_consume(struct sk_buff *skb)
 inline bool skb_recycler_consume_list_fast(struct sk_buff_head *skb_list)
 {
 	struct sk_buff *skb = NULL, *next = NULL;
-
+	if (unlikely(!skb_recycling_enable)) {
+		return false;
+	}
 	skb_queue_walk_safe(skb_list, skb, next) {
 		if (skb) {
 			__skb_unlink(skb, skb_list);
@@ -310,6 +325,11 @@ inline bool skb_recycler_consume_list_fast(struct sk_buff_head *skb_list)
 {
 	unsigned long flags;
 	struct sk_buff_head *h;
+
+	/* Allocate the recycled skbs if the skb_recycling_enable */
+	if (unlikely(!skb_recycling_enable)) {
+		return false;
+	}
 
 	h = &get_cpu_var(recycle_list);
 	local_irq_save(flags);
@@ -579,6 +599,53 @@ static const struct file_operations proc_skb_max_spare_skbs_fops = {
 };
 #endif /* CONFIG_SKB_RECYCLER_MULTI_CPU */
 
+/* procfs: skb_recycler_enable
+ * By default, recycler is disabled for QSDK_512 profile.
+ * Can be enabled for alder/miami QSDK_512 profile.
+ */
+static int proc_skb_recycler_enable_show(struct seq_file *seq, void *v)
+{
+        seq_printf(seq, "%d\n", skb_recycling_enable);
+        return 0;
+}
+
+static int proc_skb_recycle_enable_open(struct inode *inode, struct file *file)
+{
+        return single_open(file,
+                           proc_skb_recycler_enable_show,
+                           PDE_DATA(inode));
+}
+
+static ssize_t
+proc_skb_recycle_enable_write(struct file *file,
+                              const char __user *buf,
+                              size_t count,
+                              loff_t *ppos)
+{
+        int ret;
+        int enable;
+        char buffer[13];
+
+        memset(buffer, 0, sizeof(buffer));
+        if (count > sizeof(buffer) - 1)
+                count = sizeof(buffer) - 1;
+        if (copy_from_user(buffer, buf, count) != 0)
+                return -EFAULT;
+        ret = kstrtoint(strstrip(buffer), 10, &enable);
+        if (ret == 0 && enable >= 0)
+                skb_recycling_enable = enable;
+
+        return count;
+}
+
+static const struct file_operations proc_skb_recycle_enable_fops = {
+        .owner   = THIS_MODULE,
+        .open    = proc_skb_recycle_enable_open,
+        .read    = seq_read,
+        .write   = proc_skb_recycle_enable_write,
+        .release = single_release,
+};
+
 static void skb_recycler_init_procfs(void)
 {
 	proc_net_skbrecycler = proc_mkdir("skb_recycler", init_net.proc_net);
@@ -612,6 +679,12 @@ static void skb_recycler_init_procfs(void)
 			 &proc_skb_max_spare_skbs_fops))
 		pr_err("cannot create proc net skb_recycle max_spare_skbs\n");
 #endif
+
+	if (!proc_create("skb_recycler_enable",
+                         S_IRUGO | S_IWUGO,
+                         proc_net_skbrecycler,
+                         &proc_skb_recycle_enable_fops))
+                pr_err("cannot create proc net skb_recycle enable\n");
 }
 
 void __init skb_recycler_init(void)
