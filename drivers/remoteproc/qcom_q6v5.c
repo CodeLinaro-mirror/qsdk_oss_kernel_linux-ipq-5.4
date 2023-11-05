@@ -214,6 +214,9 @@ void qcom_q6v5_panic_handler(struct qcom_q6v5 *q6v5)
 	smem_panic_handler();
 	qcom_smem_state_update_bits(q6v5->shutdown_state,
 			BIT(q6v5->shutdown_bit), BIT(q6v5->shutdown_bit));
+	qcom_log_smp2p_ob_cmd(q6v5->shutdown_bit, BIT(q6v5->shutdown_bit),
+			      BIT(q6v5->shutdown_bit));
+	pr_info("APSS Panic: Sent shutdown request to Q6\n");
 	mdelay(STOP_ACK_TIMEOUT_MS);
 }
 EXPORT_SYMBOL_GPL(qcom_q6v5_panic_handler);

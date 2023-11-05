@@ -154,6 +154,7 @@ struct qcom_smp2p {
 };
 
 #define SMP2PLOG_SIZE 256
+#define SMP2P_OB_LOG_SIZE 2
 static void __iomem *global_timer_base;
 
 struct smp2p_log {
@@ -166,6 +167,16 @@ struct smp2p_log {
 } smp2pintr[SMP2PLOG_SIZE];
 unsigned int smp2pintrindex;
 
+struct  smp2p_ob_cmd_log {
+	u64 timestamp;
+	unsigned int global_timer_lo;
+	unsigned int global_timer_hi;
+	u8 bit_no;
+	u32 mask;
+	u32 value;
+} smp2p_ob_log[SMP2P_OB_LOG_SIZE];
+unsigned int smp2p_ob_log_index;
+
 struct qcom_smp2p *g_smp2p;
 void qcom_clear_smp2p_last_value(void)
 {
@@ -175,6 +186,22 @@ void qcom_clear_smp2p_last_value(void)
 		entry->last_value = 0x0;
 }
 EXPORT_SYMBOL(qcom_clear_smp2p_last_value);
+
+void qcom_log_smp2p_ob_cmd(u8 bit_no, u32 mask, u32 value)
+{
+	smp2p_ob_log[smp2p_ob_log_index].timestamp =
+						ktime_to_us(ktime_get());
+	if (global_timer_base) {
+		smp2p_ob_log[smp2p_ob_log_index].global_timer_lo =
+			readl_relaxed(global_timer_base + GLOBAL_TIMER_LO) - 0x13;
+		smp2p_ob_log[smp2p_ob_log_index].global_timer_hi =
+			readl_relaxed(global_timer_base + GLOBAL_TIMER_HI);
+	}
+	smp2p_ob_log[smp2p_ob_log_index].bit_no = bit_no;
+	smp2p_ob_log[smp2p_ob_log_index].mask = mask;
+	smp2p_ob_log[smp2p_ob_log_index++].value = value;
+	smp2p_ob_log_index &= (SMP2P_OB_LOG_SIZE - 1);
+}
 
 static void qcom_smp2p_kick(struct qcom_smp2p *smp2p)
 {
@@ -635,6 +662,8 @@ static int qcom_smp2p_remove(struct platform_device *pdev)
 	smp2p->out->valid_entries = 0;
 	memset(smp2pintr, 0, sizeof(struct smp2p_log) * SMP2PLOG_SIZE);
 	smp2pintrindex = 0;
+	memset(smp2p_ob_log, 0, sizeof(struct smp2p_ob_cmd_log) * SMP2P_OB_LOG_SIZE);
+	smp2p_ob_log_index = 0;
 	iounmap(global_timer_base);
 	global_timer_base = NULL;
 	return 0;
