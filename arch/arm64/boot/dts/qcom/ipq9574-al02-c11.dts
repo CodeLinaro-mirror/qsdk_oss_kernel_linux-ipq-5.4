@@ -224,11 +224,6 @@
 			};
 		};
 
-		license_manager {
-			compatible = "qti,license-manager-service";
-			device-license-termination;
-		};
-
 		qpic_bam: dma@7984000 {
 			status = "ok";
 		};
