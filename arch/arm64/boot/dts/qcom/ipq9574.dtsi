@@ -3664,6 +3664,7 @@
 
 	license_manager:license-manager {
 		compatible = "qti,license-manager-service";
+		license-file = "";
 	};
 
 	psci {
