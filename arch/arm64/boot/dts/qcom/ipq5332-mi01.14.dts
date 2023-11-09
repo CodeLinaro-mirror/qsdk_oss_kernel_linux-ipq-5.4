@@ -615,6 +615,7 @@
 	mem-region = <&q6_qcn6432_data_1>;
 	memory-region = <&q6_qcn6432_data_1>;
 	qcom,wsi = <&wsi>;
+	qcom,pci_slot_id = <0>;
 	status = "ok";
 };
 
