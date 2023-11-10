@@ -2540,6 +2540,7 @@
 
 	license_manager:license-manager {
 		compatible = "qti,license-manager-service";
+		license-file = "";
 	};
 
 	gpio_keys {
