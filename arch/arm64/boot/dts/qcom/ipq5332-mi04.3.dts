@@ -516,3 +516,26 @@
 		};
 	};
 };
+
+&wifi0 {
+	qcom,multipd_arch;
+	qcom,rproc = <&q6_wcss_pd1>;
+	qcom,userpd-subsys-name = "q6v5_wcss_userpd1";
+	qcom,tgt-mem-mode = <0x2>;
+	qcom,bdf-addr = <0x4BD00000 0x4BD00000 0x4BD00000 0x0 0x0 0x0>;
+	qcom,board_id = <0x43>;
+	mem-region = <&q6_ipq5332_data>;
+	status = "ok";
+};
+
+&wifi4 {
+	qcom,multipd_arch;
+	qcom,rproc = <&q6_wcss_pd2>;
+	qcom,userpd-subsys-name = "q6v5_wcss_userpd2";
+	qcom,tgt-mem-mode = <0x2>;
+	qcom,bdf-addr = <0x4CE00000 0x4CE00000 0x4CE00000 0x0 0x0 0x0>;
+	qcom,board_id = <0x054>;
+	mem-region = <&q6_qcn6432_data_1>;
+	qcom,pci_slot_id = <1>;
+	status = "ok";
+};
