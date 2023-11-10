@@ -707,6 +707,7 @@
 	qcom,caldb-size = <0x500000>;
 	qcom,board_id = <0x052>;
 	mem-region = <&q6_qcn6432_data_1>;
+	qcom,pci_slot_id = <1>;
 	status = "ok";
 };
 
@@ -720,5 +721,6 @@
 	qcom,caldb-size = <0x500000>;
 	qcom,board_id = <0x091>;
 	mem-region = <&q6_qcn6432_data_2>;
+	qcom,pci_slot_id = <2>;
 	status = "ok";
 };
