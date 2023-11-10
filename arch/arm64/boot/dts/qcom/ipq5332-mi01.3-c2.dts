@@ -597,4 +597,5 @@
 	mem-region = <&q6_qcn6432_data_1>;
 	qcom,pci_slot_id = <0>;
 	status = "ok";
+	interrupts = <0 33 1>;
 };
