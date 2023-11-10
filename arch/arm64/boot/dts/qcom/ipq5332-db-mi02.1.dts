@@ -404,5 +404,6 @@
 	qcom,bdf-addr = <0x4CE00000 0x4CE00000 0x4CE00000 0x0 0x0 0x0>;
 	qcom,board_id = <0x060>;
 	mem-region = <&q6_qcn6432_data_1>;
+	qcom,pci_slot_id = <1>;
 	status = "ok";
 };
