@@ -884,6 +884,7 @@
 	memory-region = <&q6_qcn6432_data_1>;
 	qcom,wsi = <&wsi>;
 	status = "ok";
+	interrupts = <0 33 1>;
 };
 
 &wifi5 {
@@ -907,4 +908,5 @@
 	memory-region = <&q6_qcn6432_data_2>;
 	qcom,wsi = <&wsi>;
 	status = "ok";
+	interrupts = <0 410 1>;
 };

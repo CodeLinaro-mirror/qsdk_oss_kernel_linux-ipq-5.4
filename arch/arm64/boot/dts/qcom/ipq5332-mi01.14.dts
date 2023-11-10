@@ -618,6 +618,7 @@
 	memory-region = <&q6_qcn6432_data_1>;
 	qcom,wsi = <&wsi>;
 	status = "ok";
+	interrupts = <0 33 1>;
 };
 
 &qcn9224_pcie1 {

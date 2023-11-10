@@ -537,4 +537,5 @@
 	qcom,board_id = <0x053>;
 	mem-region = <&q6_qcn6432_data_1>;
 	status = "ok";
+	interrupts = <0 410 1>;
 };
