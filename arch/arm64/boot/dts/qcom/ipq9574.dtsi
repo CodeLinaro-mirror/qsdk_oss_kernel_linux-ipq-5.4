@@ -3662,6 +3662,10 @@
 		};
 	};
 
+	license_manager:license-manager {
+		compatible = "qti,license-manager-service";
+	};
+
 	psci {
 		compatible = "arm,psci-1.0";
 		method = "smc";
