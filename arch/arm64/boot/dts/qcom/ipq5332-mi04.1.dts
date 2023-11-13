@@ -709,6 +709,7 @@
 	mem-region = <&q6_qcn6432_data_1>;
 	qcom,pci_slot_id = <1>;
 	status = "ok";
+	interrupts = <0 410 1>;
 };
 
 &wifi5 {
@@ -723,4 +724,5 @@
 	mem-region = <&q6_qcn6432_data_2>;
 	qcom,pci_slot_id = <2>;
 	status = "ok";
+	interrupts = <0 48 1>;
 };

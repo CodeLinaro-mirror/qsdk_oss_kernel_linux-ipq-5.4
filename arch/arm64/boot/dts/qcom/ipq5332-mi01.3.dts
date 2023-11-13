@@ -885,6 +885,7 @@
 	qcom,pci_slot_id = <0>;
 	qcom,wsi = <&wsi>;
 	status = "ok";
+	interrupts = <0 33 1>;
 };
 
 &wifi5 {
@@ -909,4 +910,5 @@
 	qcom,pci_slot_id = <1>;
 	qcom,wsi = <&wsi>;
 	status = "ok";
+	interrupts = <0 410 1>;
 };

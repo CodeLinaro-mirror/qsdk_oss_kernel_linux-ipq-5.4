@@ -619,6 +619,7 @@
 	qcom,wsi = <&wsi>;
 	qcom,pci_slot_id = <0>;
 	status = "ok";
+	interrupts = <0 33 1>;
 };
 
 &qcn9224_pcie1 {
