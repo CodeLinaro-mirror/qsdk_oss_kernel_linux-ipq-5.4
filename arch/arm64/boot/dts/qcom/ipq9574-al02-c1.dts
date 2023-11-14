@@ -526,19 +526,19 @@
 			pinctrl-names = "default";
 			led@16 {
 				label = "led0_g";
-				gpios = <&tlmm 16 GPIO_ACTIVE_LOW>;
+				gpios = <&tlmm 16 GPIO_ACTIVE_HIGH>;
 				linux,default-trigger = "led_g";
 				default-state = "off";
 			};
 			led@17 {
 				label = "led0_b";
-				gpios = <&tlmm 17 GPIO_ACTIVE_LOW>;
+				gpios = <&tlmm 17 GPIO_ACTIVE_HIGH>;
 				linux,default-trigger = "led_b";
 				default-state = "off";
 			};
 			led@6 {
 				label = "led0_r";
-				gpios = <&tlmm 6 GPIO_ACTIVE_LOW>;
+				gpios = <&tlmm 6 GPIO_ACTIVE_HIGH>;
 				linux,default-trigger = "led_r";
 				default-state = "on";
 			};
