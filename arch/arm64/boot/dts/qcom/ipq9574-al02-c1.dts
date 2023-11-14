@@ -320,6 +320,13 @@
 					bias-disable;
 				};
 			};
+			usb_supply_pin: usb-supply-pin {
+				pins = "gpio64";
+				function = "gpio";
+				drive-strength = <8>;
+				bias-pull-up;
+				output-high;
+			};
 		};
 
 		blsp1_uart2: serial@78b1000 {
@@ -510,6 +517,8 @@
 
 		usb: usb3@8A00000 {
 			status = "ok";
+			pinctrl-0 = <&usb_supply_pin>;
+			pinctrl-names = "default";
 		};
 
 		qusb_phy_0: qusb@7B000 {
