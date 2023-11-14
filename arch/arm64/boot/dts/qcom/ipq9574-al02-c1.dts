@@ -758,6 +758,64 @@
 	};
 };
 
+&CPU0 {
+        cpu0-supply = <&dummy_reg_cpu>;
+};
+
+&CPU1 {
+        cpu-supply = <&dummy_reg_cpu>;
+};
+
+&CPU2 {
+        cpu-supply = <&dummy_reg_cpu>;
+};
+
+&CPU3 {
+        cpu-supply = <&dummy_reg_cpu>;
+};
+
+&cpus {
+	cpu_opp_table: cpu_opp_table {
+		/delete-node/ opp-0;
+		opp-936000000 {
+		      opp-microvolt = <1075000>;
+		};
+		opp-1104000000 {
+		       opp-microvolt = <1075000>;
+		};
+		opp-1200000000 {
+		       opp-microvolt = <1075000>;
+		};
+		opp-1416000000 {
+		       opp-microvolt = <1075000>;
+		};
+		opp-1488000000 {
+		       opp-microvolt = <1075000>;
+		};
+		opp-1608000000 {
+		       opp-microvolt = <1075000>;
+		};
+		opp-1800000000 {
+		       opp-microvolt = <1075000>;
+	       };
+	       opp-2208000000 {
+		       opp-microvolt = <1075000>;
+	       };
+	};
+};
+
+&apc_apm {
+	status = "disabled";
+};
+
+&apc_cpr {
+	status = "disabled";
+};
+
+&npu_cpr {
+	status = "disabled";
+};
+
 &wifi0 {
        // 1 below indicates GPIO is active low
        //led-gpio = <&tlmm 64 1>;
