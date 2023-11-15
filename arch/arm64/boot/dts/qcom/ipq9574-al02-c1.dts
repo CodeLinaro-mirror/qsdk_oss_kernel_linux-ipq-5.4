@@ -657,11 +657,11 @@
 			num_devices = <0x1>;
 			ess-switch@3a000000 {
 				switch_cpu_bmp = <0x1>;  /* cpu port bitmap */
-				switch_lan_bmp = <0x3e>; /* lan port bitmap */
-//				switch_wan_bmp = <0x40>; /* wan port bitmap */
+				switch_lan_bmp = <0x1e>; /* lan port bitmap */
+				switch_wan_bmp = <0x20>; /* wan port bitmap */
 				switch_mac_mode = <0x0>; /* mac mode for uniphy instance0*/
 				switch_mac_mode1 = <0xff>; /* mac mode for uniphy instance1*/
-				switch_mac_mode2 = <0xd>; /* mac mode for uniphy instance2*/
+				switch_mac_mode2 = <0xff>; /* mac mode for uniphy instance2*/
 				bm_tick_mode = <0>; /* bm tick mode */
 				tm_tick_mode = <0>; /* tm tick mode */
 
@@ -693,6 +693,91 @@
 					};*/
 				};
 
+				qcom,port_ledinfo {
+					port@0 {
+						port = <1>;
+						led_source@0 {
+							source = <0>;
+							mode = "normal";
+							speed = "10M","100M";
+							blink_en = "enable";
+						};
+
+						led_source@1 {
+							source = <1>;
+							mode = "normal";
+							speed = "1000M";
+							blink_en = "enable";
+						};
+					};
+
+					port@1 {
+						port = <2>;
+						led_source@0 {
+							source = <0>;
+							mode = "normal";
+							speed = "10M","100M";
+							blink_en = "enable";
+						};
+
+						led_source@1 {
+							source = <1>;
+							mode = "normal";
+							speed = "1000M";
+							blink_en = "enable";
+						};
+					};
+
+					port@2 {
+						port = <3>;
+						led_source@0 {
+							source = <0>;
+							mode = "normal";
+							speed = "10M","100M";
+							blink_en = "enable";
+						};
+
+						led_source@1 {
+							source = <1>;
+							mode = "normal";
+							speed = "1000M";
+							blink_en = "enable";
+						};
+					};
+
+					port@3 {
+						port = <4>;
+						led_source@0 {
+							source = <0>;
+							mode = "normal";
+							speed = "10M","100M";
+							blink_en = "enable";
+						};
+
+						led_source@1 {
+							source = <1>;
+							mode = "normal";
+							speed = "1000M";
+							blink_en = "enable";
+						};
+					};
+
+					port@4 {
+						port = <5>;
+						led_source@0 {
+							source = <0>;
+							mode = "normal";
+							speed = "10M","100M";
+							blink_en = "enable";
+						};
+						led_source@1 {
+							source = <1>;
+							mode = "normal";
+							speed = "1000M";
+							blink_en = "enable";
+						};
+					};
+				};
 			};
 		};
 
