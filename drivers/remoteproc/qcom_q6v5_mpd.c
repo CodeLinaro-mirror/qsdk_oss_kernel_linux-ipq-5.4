@@ -175,6 +175,7 @@ struct license_bootargs {
 	u32 size;
 } __packed;
 
+#ifdef CONFIG_IPQ_SUBSYSTEM_RAMDUMP
 static int qcom_get_pd_fw_info(struct q6_wcss *wcss, const struct firmware *fw,
 				struct ramdump_segment *segs, int index,
 				struct qcom_pd_fw_info *fw_info)
@@ -195,7 +196,6 @@ static int qcom_get_pd_fw_info(struct q6_wcss *wcss, const struct firmware *fw,
 	return ret;
 }
 
-#ifdef CONFIG_IPQ_SUBSYSTEM_RAMDUMP
 static void crashdump_init(struct rproc *rproc,
 				struct rproc_dump_segment *segment,
 				void *dest)
