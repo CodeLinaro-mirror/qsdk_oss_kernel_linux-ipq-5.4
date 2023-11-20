@@ -95,6 +95,7 @@ wcss_q6_tprobe: wcss_q6 {
 			status = "ok";
 		};
 
+#if !defined __IPQ_MEM_PROFILE_256_MB__
 pcie_G3X1_0_tprobe: pcie1 {
 			    compatible = "qcom,pcie-G3X1-0-tprobe-driver";
 			    reg = <0x584600 0x13c>;
@@ -106,6 +107,7 @@ pcie_G3X1_0_tprobe: pcie1 {
 			    hist_bin_width = <0x64>;
 			    status = "ok";
 		    };
+#endif
 
 pcie_G3X2_tprobe: pcie2 {
 			  compatible = "qcom,pcie-G3X2-tprobe-driver";
