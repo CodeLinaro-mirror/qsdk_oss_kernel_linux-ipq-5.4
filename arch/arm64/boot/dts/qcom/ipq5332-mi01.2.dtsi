@@ -23,6 +23,36 @@
 
 	soc {
 		pinctrl@1000000 {
+			spi_0_pins: spi0-pinmux {
+				spi_clock {
+					pins = "gpio14";
+					function = "blsp0_spi";
+					drive-strength = <2>;
+					bias-pull-down;
+				};
+
+				spi_mosi {
+					pins = "gpio15";
+					function = "blsp0_spi";
+					drive-strength = <2>;
+					bias-pull-down;
+				};
+
+				spi_miso {
+					pins = "gpio16";
+					function = "blsp0_spi";
+					drive-strength = <2>;
+					bias-pull-down;
+				};
+
+				spi_cs {
+					pins = "gpio17";
+					function = "blsp0_spi";
+					drive-strength = <2>;
+					bias-pull-up;
+				};
+			};
+
 			serial_0_pins: serial0-pinmux {
 				pins = "gpio18", "gpio19";
 				function = "blsp0_uart0";
@@ -333,6 +363,21 @@
 			pinctrl-0 = <&serial_1_pins>;
 			pinctrl-names = "default";
 			status = "disabled";
+		};
+
+		spi@78b5000 {
+			pinctrl-0 = <&spi_0_pins>;
+			pinctrl-names = "default";
+			cs-select = <0>;
+			status = "ok";
+
+			m25p80@0 {
+				compatible = "n25q128a11";
+				#address-cells = <1>;
+				#size-cells = <1>;
+				reg = <0>;
+				spi-max-frequency = <50000000>;
+			};
 		};
 
 		i2c_1: i2c@78b6000 {
