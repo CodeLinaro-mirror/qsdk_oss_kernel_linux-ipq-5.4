@@ -175,6 +175,7 @@ struct license_bootargs {
 	u32 size;
 } __packed;
 
+#ifdef CONFIG_IPQ_SUBSYSTEM_RAMDUMP
 static int qcom_get_pd_fw_info(struct q6_wcss *wcss, const struct firmware *fw,
 				struct ramdump_segment *segs, int index,
 				struct qcom_pd_fw_info *fw_info)
@@ -195,7 +196,6 @@ static int qcom_get_pd_fw_info(struct q6_wcss *wcss, const struct firmware *fw,
 	return ret;
 }
 
-#ifdef CONFIG_IPQ_SUBSYSTEM_RAMDUMP
 static void crashdump_init(struct rproc *rproc,
 				struct rproc_dump_segment *segment,
 				void *dest)
@@ -207,34 +207,10 @@ static void crashdump_init(struct rproc *rproc,
 	struct qcom_pd_fw_info fw_info = {0};
 	struct q6_wcss *wcss = rproc->priv;
 	struct device *dev = wcss->dev;
-	struct device_node *node = NULL, *np = dev->of_node, *upd_np;
+	struct device_node *node = NULL, *np = dev->of_node;
 	const struct firmware *fw;
 	char dev_name[BUF_SIZE];
 	u32 temp;
-
-	/*
-	 * Send ramdump notification to userpd(s) if rootpd
-	 * crashed, irrespective of userpd status.
-	 */
-	for_each_available_child_of_node(wcss->dev->of_node, upd_np) {
-		struct device_node *temp;
-		struct platform_device *upd_pdev;
-		struct rproc *upd_rproc;
-
-		if (strstr(upd_np->name, "pd") == NULL)
-			continue;
-		upd_pdev = of_find_device_by_node(upd_np);
-		upd_rproc = platform_get_drvdata(upd_pdev);
-		rproc_subsys_notify(upd_rproc,
-				SUBSYS_RAMDUMP_NOTIFICATION, false);
-
-		for_each_available_child_of_node(upd_np, temp) {
-			upd_pdev = of_find_device_by_node(temp);
-			upd_rproc = platform_get_drvdata(upd_pdev);
-			rproc_subsys_notify(upd_rproc,
-					SUBSYS_RAMDUMP_NOTIFICATION, false);
-		}
-	}
 
 	if (wcss->pd_asid)
 		snprintf(dev_name, BUF_SIZE, "q6v5_wcss_userpd%d_mem",
@@ -316,7 +292,6 @@ static void crashdump_init(struct rproc *rproc,
 			goto free_device;
 		index++;
 	}
-	wcss->state = WCSS_RESTARTING;
 
 	release_firmware(fw);
 	do_elf_ramdump(handle, segs, index);
@@ -336,6 +311,42 @@ static void crashdump_init(struct rproc *rproc,
 {
 }
 #endif
+
+static void q6_coredump(struct rproc *rproc,
+			struct rproc_dump_segment *segment, void *dest)
+{
+	struct q6_wcss *wcss = rproc->priv;
+	struct device_node *upd_np;
+
+	/*
+	 * Send ramdump notification to userpd(s) if rootpd
+	 * crashed, irrespective of userpd status.
+	 */
+	for_each_available_child_of_node(wcss->dev->of_node, upd_np) {
+		struct device_node *temp;
+		struct platform_device *upd_pdev;
+		struct rproc *upd_rproc;
+
+		if (!strstr(upd_np->name, "pd"))
+			continue;
+
+		upd_pdev = of_find_device_by_node(upd_np);
+		upd_rproc = platform_get_drvdata(upd_pdev);
+		rproc_subsys_notify(upd_rproc,
+				    SUBSYS_RAMDUMP_NOTIFICATION, false);
+
+		for_each_available_child_of_node(upd_np, temp) {
+			upd_pdev = of_find_device_by_node(temp);
+			upd_rproc = platform_get_drvdata(upd_pdev);
+			rproc_subsys_notify(upd_rproc,
+					    SUBSYS_RAMDUMP_NOTIFICATION, false);
+		}
+	}
+
+	wcss->state = WCSS_RESTARTING;
+
+	crashdump_init(rproc, segment, dest);
+}
 
 static int handle_upd_in_rpd_crash(void *data)
 {
@@ -1364,7 +1375,7 @@ int q6_wcss_register_dump_segments(struct rproc *rproc,
 	 * Registering custom coredump function with a dummy dump segment
 	 * as the dump regions are taken care by the dump function itself
 	 */
-	return rproc_coredump_add_custom_segment(rproc, 0, 0, crashdump_init,
+	return rproc_coredump_add_custom_segment(rproc, 0, 0, q6_coredump,
 									NULL);
 }
 
