@@ -323,13 +323,6 @@ struct sbl_if_dualboot_info_type_v2 *read_bootconfig_mtd(
 		return NULL;
 	}
 
-	if ((bootconfig_mtd->magic_start != SMEM_DUAL_BOOTINFO_MAGIC_START) &&
-		(bootconfig_mtd->magic_start != SMEM_DUAL_BOOTINFO_MAGIC_START_TRYMODE)) {
-		pr_alert("Magic not found in \"%s\"\n", master->name);
-		kfree(bootconfig_mtd);
-		return NULL;
-	}
-
 	return bootconfig_mtd;
 }
 
@@ -369,13 +362,6 @@ struct sbl_if_dualboot_info_type_v2 *read_bootconfig_emmc(struct gendisk *disk,
 	}
 
 	memcpy(bootconfig_emmc, data, 512);
-
-	if ((bootconfig_emmc->magic_start != SMEM_DUAL_BOOTINFO_MAGIC_START) &&
-		(bootconfig_emmc->magic_start != SMEM_DUAL_BOOTINFO_MAGIC_START_TRYMODE)) {
-		pr_alert("Magic not found\n");
-		kfree(bootconfig_emmc);
-		return NULL;
-	}
 
 	return bootconfig_emmc;
 }
@@ -718,6 +704,22 @@ static int restore_bootconfig_partition(u8 which_bc)
 
 }
 
+/*
+ * Return 1 if magic start/end values is invalid
+ * else return 0.
+ */
+int is_magic_invalid(struct sbl_if_dualboot_info_type_v2 *bootconfig) {
+
+	if(((bootconfig->magic_start != SMEM_DUAL_BOOTINFO_MAGIC_START) &&
+		(bootconfig->magic_start != SMEM_DUAL_BOOTINFO_MAGIC_START_TRYMODE)) ||
+		(SMEM_DUAL_BOOTINFO_MAGIC_END != bootconfig->magic_end))
+	{
+		return 1;
+	} else {
+		return 0;
+	}
+}
+
 static int __init bootconfig_partition_init(void)
 {
 	struct per_part_info *bc1_part_info;
@@ -818,8 +820,14 @@ static int __init bootconfig_partition_init(void)
 	if (!bootconfig1 || !bootconfig2)
 		goto free_memory;
 
-	if(SMEM_DUAL_BOOTINFO_MAGIC_END != bootconfig1->magic_end ||
-			SMEM_DUAL_BOOTINFO_MAGIC_END != bootconfig2->magic_end)
+	/*
+	 * Check for valid magic value in both bootconfig partition,
+	 * if fails to have valid magic values or the
+	 * CRC of the respective partition, should be
+	 * recovered from the smem region
+	 */
+
+	if(is_magic_invalid(bootconfig1) || is_magic_invalid(bootconfig2))
 	{
 
 		u32 bootconfig1_crc, bootconfig2_crc;
@@ -833,10 +841,10 @@ static int __init bootconfig_partition_init(void)
 		bootconfig2_crc = crc32_be(0, (char *)bootconfig2, size);
 
 		is_bc1_fault = (bootconfig1_crc != bootconfig1->magic_end) &&
-			(SMEM_DUAL_BOOTINFO_MAGIC_END != bootconfig1->magic_end);
+			is_magic_invalid(bootconfig1);
 
 		is_bc2_fault = (bootconfig2_crc != bootconfig2->magic_end) &&
-			(SMEM_DUAL_BOOTINFO_MAGIC_END != bootconfig2->magic_end);
+			is_magic_invalid(bootconfig2);
 
 		if(is_bc1_fault && is_bc2_fault)
 		{
@@ -950,9 +958,13 @@ static int __init bootconfig_partition_init(void)
 			bootconfig1->age++;
 			bootconfig2->age++;
 		} else if(bootconfig1->age > bootconfig2->age) {
-			bootconfig2->age = ++bootconfig1->age;
+			++bootconfig1->age;
+			memcpy(bootconfig2, bootconfig1,
+				sizeof(struct sbl_if_dualboot_info_type_v2));
 		} else {
-			bootconfig1->age = ++bootconfig2->age;
+			++bootconfig2->age;
+			memcpy(bootconfig1, bootconfig2,
+				sizeof(struct sbl_if_dualboot_info_type_v2));
 		}
 	}
 
