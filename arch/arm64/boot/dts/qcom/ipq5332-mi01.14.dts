@@ -599,6 +599,31 @@
                         	status = "ok";
                 	};
 		};
+
+		/delete-node/ wifi1@f00000;
+
+		wifi1: wifi1@f00000 {
+			qcom,multipd_arch;
+			compatible = "qcom,cnss-qcn6432" , "qcom,qcn6432-wifi";
+			interrupt-bmap = <0x100510>;
+			interrupt-names = "umac_reset";
+			msi-parent = <&v2m0>;
+			qcom,rproc = <&q6_wcss_pd2>;
+			qcom,rproc_rpd = <&q6v5_wcss>;
+			qcom,userpd-subsys-name = "q6v5_wcss_userpd2";
+			qcom,tgt-mem-mode = <0>;
+			qcom,bdf-addr = <0x4D900000 0x4D900000 0x4D900000 0x0 0x0 0x0>;
+			qcom,caldb-addr = <0x4F000000 0x4F000000 0x4F000000 0x0 0x0 0x0>;
+			qcom,caldb-size = <0x500000>;
+			qcom,board_id = <0x060>;
+			mem-region = <&q6_qcn6432_data_1>;
+			memory-region = <&q6_qcn6432_data_1>;
+			qcom,wsi = <&wsi>;
+			qcom,pci_slot_id = <0>;
+			status = "ok";
+                        interrupts = <0 33 1>;
+		};
+
 	};
 };
 
@@ -616,24 +641,6 @@
 	memory-region = <&q6_ipq5332_data>;
 	qcom,wsi = <&wsi>;
 	status = "ok";
-};
-
-&wifi4 {
-	qcom,multipd_arch;
-	qcom,rproc = <&q6_wcss_pd2>;
-	qcom,rproc_rpd = <&q6v5_wcss>;
-	qcom,userpd-subsys-name = "q6v5_wcss_userpd2";
-	qcom,tgt-mem-mode = <0>;
-	qcom,bdf-addr = <0x4D900000 0x4D900000 0x4D900000 0x0 0x0 0x0>;
-	qcom,caldb-addr = <0x4F000000 0x4F000000 0x4F000000 0x0 0x0 0x0>;
-	qcom,caldb-size = <0x500000>;
-	qcom,board_id = <0x060>;
-	mem-region = <&q6_qcn6432_data_1>;
-	memory-region = <&q6_qcn6432_data_1>;
-	qcom,wsi = <&wsi>;
-	qcom,pci_slot_id = <0>;
-	status = "ok";
-	interrupts = <0 33 1>;
 };
 
 &qcn9224_pcie1 {
