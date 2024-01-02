@@ -123,7 +123,7 @@
 	firmware {
 		qfprom {
 			compatible = "qcom,qfprom-sec";
-			img-addr = <0x49A00000>;
+			img-addr = <0x49F00000>;
 			img-size = <0x00700000>;
 			scm-cmd-id = <0x1F>;
 		};
