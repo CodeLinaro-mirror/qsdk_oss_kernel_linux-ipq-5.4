@@ -31,6 +31,8 @@ int qcom_q6v5_prepare(struct qcom_q6v5 *q6v5)
 
 	q6v5->running = true;
 	q6v5->handover_issued = false;
+	q6v5->start_ack = false;
+	q6v5->stop_ack = false;
 
 	enable_irq(q6v5->handover_irq);
 
@@ -60,6 +62,7 @@ static irqreturn_t q6v5_wdog_interrupt(int irq, void *data)
 
 	/* Sometimes the stop triggers a watchdog rather than a stop-ack */
 	if (!q6v5->running) {
+		q6v5->stop_ack = true;
 		complete(&q6v5->stop_done);
 		return IRQ_HANDLED;
 	}
@@ -70,6 +73,10 @@ static irqreturn_t q6v5_wdog_interrupt(int irq, void *data)
 	else
 		dev_err(q6v5->dev, "watchdog without message\n");
 
+	/* Complete any pending waits for this rproc */
+	complete(&q6v5->spawn_done);
+	complete(&q6v5->start_done);
+	complete(&q6v5->stop_done);
 	rproc_report_crash(q6v5->rproc, RPROC_WATCHDOG);
 
 	return IRQ_HANDLED;
@@ -88,6 +95,12 @@ irqreturn_t q6v5_fatal_interrupt(int irq, void *data)
 		dev_err(q6v5->dev, "fatal error without message\n");
 
 	q6v5->running = false;
+
+	/* Complete any pending waits for this rproc */
+	complete(&q6v5->spawn_done);
+	complete(&q6v5->start_done);
+	complete(&q6v5->stop_done);
+
 	rproc_report_crash(q6v5->rproc, RPROC_FATAL_ERROR);
 
 	return IRQ_HANDLED;
@@ -99,6 +112,7 @@ irqreturn_t q6v5_ready_interrupt(int irq, void *data)
 
 	pr_info("Subsystem error monitoring/handling services are up\n");
 
+	q6v5->start_ack = true;
 	complete(&q6v5->start_done);
 
 	return IRQ_HANDLED;
@@ -120,6 +134,8 @@ int qcom_q6v5_wait_for_start(struct qcom_q6v5 *q6v5, int timeout)
 	ret = wait_for_completion_timeout(&q6v5->start_done, timeout);
 	if (!ret)
 		disable_irq(q6v5->handover_irq);
+	else if (!q6v5->start_ack)
+		return -ERESTARTSYS;
 
 	return !ret ? -ETIMEDOUT : 0;
 }
@@ -141,6 +157,7 @@ irqreturn_t q6v5_spawn_interrupt(int irq, void *data)
 {
 	struct qcom_q6v5 *q6v5 = data;
 
+	q6v5->spawn_ack = true;
 	complete(&q6v5->spawn_done);
 
 	return IRQ_HANDLED;
@@ -150,6 +167,7 @@ irqreturn_t q6v5_stop_interrupt(int irq, void *data)
 {
 	struct qcom_q6v5 *q6v5 = data;
 
+	q6v5->stop_ack = true;
 	complete(&q6v5->stop_done);
 
 	return IRQ_HANDLED;
@@ -166,6 +184,7 @@ int qcom_q6v5_request_stop(struct qcom_q6v5 *q6v5)
 	int ret;
 
 	q6v5->running = false;
+	q6v5->stop_ack = false;
 
 	qcom_smem_state_update_bits(q6v5->state,
 			BIT(q6v5->stop_bit), BIT(q6v5->stop_bit));
@@ -175,7 +194,10 @@ int qcom_q6v5_request_stop(struct qcom_q6v5 *q6v5)
 
 	qcom_smem_state_update_bits(q6v5->state, BIT(q6v5->stop_bit), 0);
 
-	return ret == 0 ? -ETIMEDOUT : 0;
+	if (q6v5->stop_ack)
+		return ret == 0 ? -ETIMEDOUT : 0;
+	else
+		return -ERESTARTSYS;
 }
 EXPORT_SYMBOL_GPL(qcom_q6v5_request_stop);
 
@@ -189,6 +211,7 @@ int qcom_q6v5_request_spawn(struct qcom_q6v5 *q6v5)
 {
 	int ret;
 
+	q6v5->spawn_ack = false;
 	ret = qcom_smem_state_update_bits(q6v5->spawn_state,
 			BIT(q6v5->spawn_bit), BIT(q6v5->spawn_bit));
 
@@ -198,7 +221,10 @@ int qcom_q6v5_request_spawn(struct qcom_q6v5 *q6v5)
 	qcom_smem_state_update_bits(q6v5->spawn_state,
 						BIT(q6v5->spawn_bit), 0);
 
-	return ret == 0 ? -ETIMEDOUT : 0;
+	if (q6v5->spawn_ack)
+		return ret == 0 ? -ETIMEDOUT : 0;
+	else
+		return -ERESTARTSYS;
 }
 EXPORT_SYMBOL_GPL(qcom_q6v5_request_spawn);
 
