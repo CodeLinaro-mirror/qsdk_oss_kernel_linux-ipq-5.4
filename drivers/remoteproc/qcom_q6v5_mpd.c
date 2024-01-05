@@ -326,20 +326,30 @@ static void q6_coredump(struct rproc *rproc,
 		struct device_node *temp;
 		struct platform_device *upd_pdev;
 		struct rproc *upd_rproc;
+		struct q6_wcss *upd_wcss;
 
 		if (!strstr(upd_np->name, "pd"))
 			continue;
 
 		upd_pdev = of_find_device_by_node(upd_np);
 		upd_rproc = platform_get_drvdata(upd_pdev);
+		upd_wcss = upd_rproc->priv;
 		rproc_subsys_notify(upd_rproc,
 				    SUBSYS_RAMDUMP_NOTIFICATION, false);
+		complete(&upd_wcss->q6.spawn_done);
+		complete(&upd_wcss->q6.start_done);
+		complete(&upd_wcss->q6.stop_done);
 
 		for_each_available_child_of_node(upd_np, temp) {
 			upd_pdev = of_find_device_by_node(temp);
 			upd_rproc = platform_get_drvdata(upd_pdev);
+			upd_wcss = upd_rproc->priv;
 			rproc_subsys_notify(upd_rproc,
 					    SUBSYS_RAMDUMP_NOTIFICATION, false);
+
+			complete(&upd_wcss->q6.spawn_done);
+			complete(&upd_wcss->q6.start_done);
+			complete(&upd_wcss->q6.stop_done);
 		}
 	}
 
@@ -513,11 +523,18 @@ static int q6_wcss_spawn_pd(struct rproc *rproc)
 	if (ret == -ETIMEDOUT) {
 		pr_err("%s spawn timedout\n", rproc->name);
 		return ret;
+	} else if (ret == -ERESTARTSYS) {
+		pr_err("%s spawn failed\n", rproc->name);
+		return ret;
 	}
 
 	ret = qcom_q6v5_wait_for_start(&wcss->q6, msecs_to_jiffies(10000));
 	if (ret == -ETIMEDOUT) {
 		pr_err("%s start timedout\n", rproc->name);
+		wcss->q6.running = false;
+		return ret;
+	} else if (ret == -ERESTARTSYS) {
+		pr_err("%s start failed\n", rproc->name);
 		wcss->q6.running = false;
 		return ret;
 	}
