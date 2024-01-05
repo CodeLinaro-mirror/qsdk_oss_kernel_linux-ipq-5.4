@@ -175,6 +175,7 @@
 					qti,rddm-seg-len = <0x1000>;
 #if defined(__CNSS2__)
 					qrtr_node_id = <0x31>;
+					memory-region = <0>, <&mhi_region1>;
 #else
 					qcom,board_id = <0x1019>;
 					qcom,wsi = <&wsi>;
