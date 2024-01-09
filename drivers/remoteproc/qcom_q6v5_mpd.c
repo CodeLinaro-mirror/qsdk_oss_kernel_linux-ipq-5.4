@@ -326,30 +326,20 @@ static void q6_coredump(struct rproc *rproc,
 		struct device_node *temp;
 		struct platform_device *upd_pdev;
 		struct rproc *upd_rproc;
-		struct q6_wcss *upd_wcss;
 
 		if (!strstr(upd_np->name, "pd"))
 			continue;
 
 		upd_pdev = of_find_device_by_node(upd_np);
 		upd_rproc = platform_get_drvdata(upd_pdev);
-		upd_wcss = upd_rproc->priv;
 		rproc_subsys_notify(upd_rproc,
 				    SUBSYS_RAMDUMP_NOTIFICATION, false);
-		complete(&upd_wcss->q6.spawn_done);
-		complete(&upd_wcss->q6.start_done);
-		complete(&upd_wcss->q6.stop_done);
 
 		for_each_available_child_of_node(upd_np, temp) {
 			upd_pdev = of_find_device_by_node(temp);
 			upd_rproc = platform_get_drvdata(upd_pdev);
-			upd_wcss = upd_rproc->priv;
 			rproc_subsys_notify(upd_rproc,
 					    SUBSYS_RAMDUMP_NOTIFICATION, false);
-
-			complete(&upd_wcss->q6.spawn_done);
-			complete(&upd_wcss->q6.start_done);
-			complete(&upd_wcss->q6.stop_done);
 		}
 	}
 
@@ -467,11 +457,11 @@ static int q6_wcss_start(struct rproc *rproc)
 
 wait_for_reset:
 	ret = qcom_q6v5_wait_for_start(&wcss->q6, msecs_to_jiffies(10000));
-	if (ret == -ETIMEDOUT) {
-		if (debug_wcss)
+	if (ret) {
+		if (debug_wcss && ret == -ETIMEDOUT)
 			goto wait_for_reset;
 		else
-			dev_err(wcss->dev, "start timed out\n");
+			dev_err(wcss->dev, "start failed ret: %d\n", ret);
 	}
 
 	/* start userpd's, if root pd getting recovered*/
@@ -518,23 +508,21 @@ static int q6_wcss_spawn_pd(struct rproc *rproc)
 {
 	int ret;
 	struct q6_wcss *wcss = rproc->priv;
+	struct qcom_q6v5 *q6v5 = &wcss->q6;
+
+	reinit_completion(&q6v5->start_done);
+	reinit_completion(&q6v5->stop_done);
+	reinit_completion(&q6v5->spawn_done);
 
 	ret = qcom_q6v5_request_spawn(&wcss->q6);
-	if (ret == -ETIMEDOUT) {
-		pr_err("%s spawn timedout\n", rproc->name);
-		return ret;
-	} else if (ret == -ERESTARTSYS) {
-		pr_err("%s spawn failed\n", rproc->name);
+	if (ret) {
+		dev_err(wcss->dev, "Spawn failed, ret = %d\n", ret);
 		return ret;
 	}
 
 	ret = qcom_q6v5_wait_for_start(&wcss->q6, msecs_to_jiffies(10000));
-	if (ret == -ETIMEDOUT) {
-		pr_err("%s start timedout\n", rproc->name);
-		wcss->q6.running = false;
-		return ret;
-	} else if (ret == -ERESTARTSYS) {
-		pr_err("%s start failed\n", rproc->name);
+	if (ret) {
+		dev_err(wcss->dev, "Start failed, ret = %d\n", ret);
 		wcss->q6.running = false;
 		return ret;
 	}
@@ -692,12 +680,22 @@ static int q6_wcss_stop(struct rproc *rproc)
 				continue;
 			upd_pdev = of_find_device_by_node(upd_np);
 			upd_rproc = platform_get_drvdata(upd_pdev);
+			upd_wcss = upd_rproc->priv;
+			complete(&upd_wcss->q6.spawn_done);
+			complete(&upd_wcss->q6.start_done);
+			complete(&upd_wcss->q6.stop_done);
+
 			rproc_subsys_notify(upd_rproc,
 				SUBSYS_PREPARE_FOR_FATAL_SHUTDOWN, true);
 
 			for_each_available_child_of_node(upd_np, temp) {
 				upd_pdev = of_find_device_by_node(temp);
 				upd_rproc = platform_get_drvdata(upd_pdev);
+				upd_wcss = upd_rproc->priv;
+				complete(&upd_wcss->q6.spawn_done);
+				complete(&upd_wcss->q6.start_done);
+				complete(&upd_wcss->q6.stop_done);
+
 				rproc_subsys_notify(upd_rproc,
 					SUBSYS_PREPARE_FOR_FATAL_SHUTDOWN, true);
 			}
@@ -768,8 +766,8 @@ static int q6_wcss_stop(struct rproc *rproc)
 
 	if (wcss->requires_force_stop) {
 		ret = qcom_q6v5_request_stop(&wcss->q6);
-		if (ret == -ETIMEDOUT) {
-			dev_err(wcss->dev, "timed out on wait\n");
+		if (ret) {
+			dev_err(wcss->dev, "Stop failed, ret: %d\n", ret);
 			return ret;
 		}
 	}
@@ -792,7 +790,7 @@ static int wcss_ipq5332_pcie_pd_stop(struct rproc *rproc)
 	if (rproc->state != RPROC_CRASHED) {
 		ret = qcom_q6v5_request_stop(&wcss->q6);
 		if (ret) {
-			dev_err(&rproc->dev, "ahb pd not stopped\n");
+			dev_err(&rproc->dev, "ahb pd not stopped, ret: %d\n", ret);
 			return ret;
 		}
 	}
@@ -823,7 +821,7 @@ static int wcss_pcie_pd_stop(struct rproc *rproc)
 	if (rproc->state != RPROC_CRASHED) {
 		ret = qcom_q6v5_request_stop(&wcss->q6);
 		if (ret) {
-			dev_err(&rproc->dev, "ahb pd not stopped\n");
+			dev_err(&rproc->dev, "ahb pd not stopped, ret: %d\n", ret);
 			return ret;
 		}
 	}
@@ -886,7 +884,7 @@ static int wcss_ipq5332_ahb_pd_stop(struct rproc *rproc)
 	if (rproc->state != RPROC_CRASHED && wcss->q6.stop_bit && q6_offload) {
 		ret = qcom_q6v5_request_stop(&wcss->q6);
 		if (ret) {
-			dev_err(&rproc->dev, "ahb pd not stopped\n");
+			dev_err(&rproc->dev, "ahb pd not stopped, ret: %d\n", ret);
 			return ret;
 		}
 	}
@@ -924,7 +922,7 @@ static int wcss_ahb_pd_stop(struct rproc *rproc)
 	if (rproc->state != RPROC_CRASHED && wcss->q6.stop_bit) {
 		ret = qcom_q6v5_request_stop(&wcss->q6);
 		if (ret) {
-			dev_err(&rproc->dev, "ahb pd not stopped\n");
+			dev_err(&rproc->dev, "ahb pd not stopped, ret: %d\n", ret);
 			return ret;
 		}
 	}
