@@ -187,7 +187,7 @@
 			reg = <0x0 0x4f900000 0x0 0x1200000>;
 		};
 
-		qcn9224_pcie1: qcn9224_pcie1@50A00000 {
+		qcn9224_pcie1: qcn9224_pcie1@50b00000 {
 			no-map;
 			reg = <0x0 0x50B00000 0x0 0x03200000>;
 		};
