@@ -165,6 +165,9 @@
 			reg = <0x0 0x55000000 0x0 0x00900000>;
 		};
 #endif
+		minidump_mem: minidump_mem@0 {
+			no-map;
+		};
 
 		rpm_msg_ram: rpm_msg_ram@0x60000 {
 			no-map;
