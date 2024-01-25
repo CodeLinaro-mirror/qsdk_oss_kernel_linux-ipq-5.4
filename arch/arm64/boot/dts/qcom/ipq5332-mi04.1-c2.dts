@@ -255,6 +255,7 @@
 			pinctrl-0 = <&spi_0_pins>;
 			pinctrl-names = "default";
 			cs-select = <0>;
+			spi-transfer-timeout = <500>;
 			status = "ok";
 
 			m25p80@0 {
