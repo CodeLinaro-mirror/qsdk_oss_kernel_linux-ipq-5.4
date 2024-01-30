@@ -18,7 +18,6 @@
 #include <linux/ratelimit.h>
 #include <linux/reboot.h>
 #include <asm/current.h>
-#include <soc/qcom/restart.h>
 #include <linux/sched/signal.h>
 #include <linux/vmalloc.h>
 #ifdef CONFIG_DIAG_OVER_USB
@@ -127,7 +126,6 @@ void diag_dci_record_traffic(int read_bytes, uint8_t ch_type,
 	temp_data->peripheral = peripheral;
 	temp_data->ch_type = ch_type;
 	temp_data->proc = proc;
-	diag_get_timestamp(temp_data->time_stamp);
 	curr_dci_data++;
 	iteration++;
 	mutex_unlock(&dci_stat_mutex);
@@ -1547,13 +1545,13 @@ void diag_dci_channel_open_work(struct work_struct *work)
 void diag_dci_notify_client(int peripheral_mask, int data, int proc)
 {
 	int stat = 0;
-	struct siginfo info;
+	struct kernel_siginfo info;
 	struct list_head *start, *temp;
 	struct diag_dci_client_tbl *entry = NULL;
 	struct pid *pid_struct = NULL;
 	struct task_struct *dci_task = NULL;
 
-	memset(&info, 0, sizeof(struct siginfo));
+	memset(&info, 0, sizeof(struct kernel_siginfo));
 	info.si_code = SI_QUEUE;
 	info.si_int = (peripheral_mask | data);
 	if (data == DIAG_STATUS_OPEN)
@@ -1972,8 +1970,6 @@ fill_buffer:
 			 * time for the response to reach the client.
 			 */
 			usleep_range(5000, 5100);
-			/* call download API */
-			msm_set_restart_mode(RESTART_DLOAD);
 			pr_alert("diag: download mode set, Rebooting SoC..\n");
 			kernel_restart(NULL);
 		}

@@ -18,8 +18,8 @@
 #include <linux/list.h>
 #ifdef CONFIG_DIAG_OVER_USB
 #include <linux/usb/usbdiag.h>
-#endif
 #include "diag_usb.h"
+#endif
 #include "diag_mux.h"
 #include "diagmem.h"
 #include "diag_ipc_logging.h"
@@ -27,6 +27,7 @@
 #define DIAG_USB_STRING_SZ	10
 #define DIAG_USB_MAX_SIZE	16384
 
+#ifdef CONFIG_DIAG_OVER_USB
 struct diag_usb_info diag_usb[NUM_DIAG_USB_DEV] = {
 	{
 		.id = DIAG_USB_LOCAL,
@@ -779,4 +780,4 @@ void diag_usb_exit(int id)
 	kfree(ch->read_buf);
 	ch->read_buf = NULL;
 }
-
+#endif
