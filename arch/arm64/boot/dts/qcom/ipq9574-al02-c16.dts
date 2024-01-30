@@ -27,6 +27,10 @@
 
 	soc {
 		pcie0_x1: pci@28000000 {
+			pinctrl-0 = <&pcie0_wake_pins &pci0_pin>;
+			interrupts-extended = <&tlmm 24 IRQ_TYPE_LEVEL_HIGH>,
+					      <&intc GIC_SPI 51 IRQ_TYPE_LEVEL_HIGH>;
+			interrupt-names = "wake_gpio", "global_irq";
                         status = "ok";
                         pcie0_rp {
                                 reg = <0 0 0 0 0>;
