@@ -20,7 +20,6 @@
 #include <linux/usb/usbdiag.h>
 #endif
 #include <soc/qcom/socinfo.h>
-#include <soc/qcom/restart.h>
 #include "diagmem.h"
 #include "diagchar.h"
 #include "diagfwd.h"
@@ -29,7 +28,9 @@
 #include "diagchar_hdlc.h"
 #include "diag_dci.h"
 #include "diag_masks.h"
+#ifdef CONFIG_DIAG_OVER_USB
 #include "diag_usb.h"
+#endif
 #include "diag_mux.h"
 #include "diag_ipc_logging.h"
 
@@ -86,30 +87,7 @@ static int has_device_tree(void)
 
 int chk_config_get_id(void)
 {
-	switch (socinfo_get_msm_cpu()) {
-	case MSM_CPU_8960:
-	case MSM_CPU_8960AB:
-		return AO8960_TOOLS_ID;
-	case MSM_CPU_8064:
-		return APQ8064_TOOLS_ID;
-	case MSM_CPU_8974:
-		return MSM8974_TOOLS_ID;
-	case MSM_CPU_8084:
-		return APQ8084_TOOLS_ID;
-	case MSM_CPU_8916:
-		return MSM8916_TOOLS_ID;
-	case MSM_CPU_8996:
-		return MSM_8996_TOOLS_ID;
-	default:
-		if (driver->use_device_tree) {
-			if (machine_is_msm8974())
-				return MSM8974_TOOLS_ID;
-			else
-				return 0;
-		} else {
-			return 0;
-		}
-	}
+	return read_ipq_cpu_type();
 }
 
 /*
@@ -120,16 +98,7 @@ int chk_apps_only(void)
 {
 	if (driver->use_device_tree)
 		return 1;
-
-	switch (socinfo_get_msm_cpu()) {
-	case MSM_CPU_8960:
-	case MSM_CPU_8960AB:
-	case MSM_CPU_8064:
-	case MSM_CPU_8974:
-		return 1;
-	default:
-		return 0;
-	}
+	return 0;
 }
 
 /*
@@ -897,7 +866,7 @@ int diag_cmd_get_mobile_id(unsigned char *src_buf, int src_len,
 	rsp.padding[1] = 0;
 	rsp.padding[2] = 0;
 	rsp.family = 0;
-	rsp.chip_id = (uint32_t)socinfo_get_id();
+	rsp.chip_id = (uint32_t)read_ipq_cpu_type();
 
 	memcpy(dest_buf, &rsp, sizeof(rsp));
 	write_len += sizeof(rsp);
@@ -1180,8 +1149,11 @@ static int diag_process_ss_diag_params(unsigned char *buf, int len, int pid)
 int diag_process_apps_pkt(unsigned char *buf, int len, int pid)
 {
 	int i, p_mask = 0;
-	int mask_ret, peripheral = -EINVAL;
-	int ret = 0, write_len = 0;
+	int mask_ret;
+#ifdef CONFIG_DIAG_OVER_USB
+	int ret = 0, peripheral = -EINVAL;
+#endif
+	int write_len = 0;
 	unsigned char *temp = NULL;
 	struct diag_cmd_reg_entry_t entry;
 	struct diag_cmd_reg_entry_t *temp_entry = NULL;
@@ -1281,8 +1253,6 @@ int diag_process_apps_pkt(unsigned char *buf, int len, int pid)
 		driver->apps_rsp_buf[0] = *buf;
 		diag_send_rsp(driver->apps_rsp_buf, 1, pid);
 		msleep(5000);
-		/* call download API */
-		msm_set_restart_mode(RESTART_DLOAD);
 		pr_crit("diag: download mode set, Rebooting SoC..\n");
 		kernel_restart(NULL);
 		/* Not required, represents that command isn't sent to modem */
@@ -1479,7 +1449,9 @@ static int diagfwd_mux_open(int id, int mode)
 
 	switch (mode) {
 	case DIAG_USB_MODE:
+#ifdef CONFIG_DIAG_OVER_USB
 		driver->usb_connected = 1;
+#endif
 		break;
 	case DIAG_MEMORY_DEVICE_MODE:
 		break;
@@ -1512,7 +1484,9 @@ static int diagfwd_mux_close(int id, int mode)
 
 	switch (mode) {
 	case DIAG_USB_MODE:
+#ifdef CONFIG_DIAG_OVER_USB
 		driver->usb_connected = 0;
+#endif
 		break;
 	case DIAG_MEMORY_DEVICE_MODE:
 		break;
@@ -2144,8 +2118,9 @@ int diagfwd_init(void)
 	return 0;
 err:
 	pr_err("diag: In %s, couldn't initialize diag\n", __func__);
-
+#ifdef CONFIG_DIAG_OVER_USB
 	diag_usb_exit(DIAG_USB_LOCAL);
+#endif
 	kfree(driver->encoded_rsp_buf);
 	kfree(driver->hdlc_buf);
 	kfree(driver->client_map);
