@@ -500,7 +500,7 @@ static void mhi_read_work_fn(struct work_struct *work)
 {
 	int err = 0;
 	unsigned char *buf = NULL;
-	enum MHI_FLAGS mhi_flags = MHI_EOT;
+	enum mhi_flags mhi_flags = MHI_EOT;
 	struct diag_mhi_ch_t *read_ch = NULL;
 	unsigned long flags;
 	struct diag_mhi_info *mhi_info = container_of(work,
@@ -536,7 +536,7 @@ static void mhi_read_work_fn(struct work_struct *work)
 			 "queueing a read buf %pK, ch: %s\n",
 			 buf, mhi_info->name);
 
-		err = mhi_queue_transfer(mhi_info->mhi_dev, DMA_FROM_DEVICE,
+		err = mhi_queue_buf(mhi_info->mhi_dev, DMA_FROM_DEVICE,
 					buf, DIAG_MDM_BUF_SIZE, mhi_flags);
 		spin_unlock_irqrestore(&read_ch->lock, flags);
 		if (err) {
@@ -577,7 +577,7 @@ static int mhi_queue_read(int token, int ch)
 static int mhi_write(int token, int ch, unsigned char *buf, int len, int ctxt)
 {
 	int err = 0;
-	enum MHI_FLAGS mhi_flags = MHI_EOT;
+	enum mhi_flags mhi_flags = MHI_EOT;
 	unsigned long flags;
 	struct diag_mhi_ch_t *ch_info = NULL;
 	int dev_idx = get_id_from_token(token);
@@ -632,12 +632,11 @@ static int mhi_write(int token, int ch, unsigned char *buf, int len, int ctxt)
 	DIAG_LOG(DIAG_DEBUG_MHI, "diag: queueing a write buf %pK, ch: %s\n",
 		 buf, mhi_info->name);
 
-	err = mhi_queue_transfer(mhi_info->mhi_dev, DMA_TO_DEVICE,
+	err = mhi_queue_buf(mhi_info->mhi_dev, DMA_TO_DEVICE,
 					buf, len, mhi_flags);
 	spin_unlock_irqrestore(&ch_info->lock, flags);
 	if (err) {
-		DIAG_LOG(DIAG_DEBUG_MHI,
-			"diag: Cannot write to MHI channel: %s, len %d, err: %d\n",
+		DIAG_LOG(DIAG_DEBUG_MHI, "diag: Cannot write to MHI channel: %s, len %d, err: %d\n",
 			mhi_info->name, len, err);
 		mhi_buf_tbl_remove(mhi_info, TYPE_MHI_WRITE_CH,
 					buf, len);
@@ -807,8 +806,7 @@ static void diag_mhi_remove(struct mhi_device *mhi_dev)
 		return;
 
 	DIAG_LOG(DIAG_DEBUG_MHI,
-		"Remove called on mhi channel: %s\n",
-		mhi_info->name);
+	"Remove called on mhi channel: %s\n", mhi_info->name);
 
 	__mhi_close(mhi_info, CHANNELS_CLOSED);
 	spin_lock_irqsave(&mhi_info->lock, flags);
@@ -824,7 +822,7 @@ static int diag_mhi_probe(struct mhi_device *mhi_dev,
 	unsigned long flags;
 	struct diag_mhi_info *mhi_info;
 
-	switch (mhi_dev->dev_id) {
+	switch (mhi_dev->mhi_cntrl->dev_id) {
 	case MHI_DEV_ID_1:
 		dev_idx = 0;
 		break;
@@ -855,7 +853,7 @@ static int diag_mhi_probe(struct mhi_device *mhi_dev,
 		dev_idx, ch);
 	mhi_info->mhi_dev = mhi_dev;
 	DIAG_LOG(DIAG_DEBUG_MHI,
-		"diag: mhi device is ready to open\n");
+	"diag: mhi device is ready to open\n");
 	spin_lock_irqsave(&mhi_info->lock, flags);
 	mhi_info->enabled = 1;
 	spin_unlock_irqrestore(&mhi_info->lock, flags);
@@ -939,8 +937,7 @@ int diag_mhi_init(void)
 				goto fail;
 			}
 			DIAG_LOG(DIAG_DEBUG_MHI,
-					"mhi dev %d port %d initialized\n",
-					dev_idx, ch);
+			"mhi dev %d port %d initialized\n", dev_idx, ch);
 		}
 	}
 	return 0;

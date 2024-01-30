@@ -25,9 +25,9 @@
 #include "diag_ipc_logging.h"
 
 struct diag_mux_state_t *diag_mux;
-static struct diag_logger_t usb_logger;
 static struct diag_logger_t md_logger;
-
+#ifdef CONFIG_DIAG_OVER_USB
+static struct diag_logger_t usb_logger;
 static struct diag_logger_ops usb_log_ops = {
 	.open = diag_usb_connect_all,
 	.close = diag_usb_disconnect_all,
@@ -38,6 +38,7 @@ static struct diag_logger_ops usb_log_ops = {
 	.write = diag_usb_write,
 	.close_peripheral = NULL
 };
+#endif
 
 static struct diag_logger_ops md_log_ops = {
 	.open = diag_md_open_all,
@@ -52,16 +53,18 @@ static struct diag_logger_ops md_log_ops = {
 
 int diag_mux_init(void)
 {
+#ifdef CONFIG_DIAG_OVER_USB
 	int proc;
+#endif
 	diag_mux = kzalloc(sizeof(struct diag_mux_state_t),
 			 GFP_KERNEL);
 	if (!diag_mux)
 		return -ENOMEM;
 	kmemleak_not_leak(diag_mux);
-
+#ifdef CONFIG_DIAG_OVER_USB
 	usb_logger.mode = DIAG_USB_MODE;
 	usb_logger.log_ops = &usb_log_ops;
-
+#endif
 	md_logger.mode = DIAG_MEMORY_DEVICE_MODE;
 	md_logger.log_ops = &md_log_ops;
 	diag_md_init();
@@ -70,13 +73,15 @@ int diag_mux_init(void)
 	 * Set USB logging as the default logger. This is the mode
 	 * Diag should be in when it initializes.
 	 */
-	diag_mux->usb_ptr = &usb_logger;
 	diag_mux->md_ptr = &md_logger;
+#ifdef CONFIG_DIAG_OVER_USB
+	diag_mux->usb_ptr = &usb_logger;
 	for (proc = 0; proc < NUM_MUX_PROC; proc++) {
 		diag_mux->logger[proc] = &usb_logger;
 		diag_mux->mux_mask[proc] = 0;
 		diag_mux->mode[proc] = DIAG_USB_MODE;
 	}
+#endif
 	return 0;
 }
 
@@ -95,6 +100,7 @@ int diag_mux_register(int proc, int ctx, struct diag_mux_ops *ops)
 	if (proc < 0 || proc >= NUM_MUX_PROC)
 		return 0;
 
+#ifdef CONFIG_DIAG_OVER_USB
 	/* Register with USB logger */
 	usb_logger.ops[proc] = ops;
 	err = diag_usb_register(proc, ctx, ops);
@@ -103,7 +109,7 @@ int diag_mux_register(int proc, int ctx, struct diag_mux_ops *ops)
 		       proc, err);
 		return err;
 	}
-
+#endif
 	md_logger.ops[proc] = ops;
 	err = diag_md_register(proc, ctx, ops);
 	if (err) {

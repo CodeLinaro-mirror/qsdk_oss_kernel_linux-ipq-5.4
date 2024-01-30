@@ -883,11 +883,14 @@ void diag_rpmsg_invalidate(void *ctxt, struct diagfwd_info *fwd_ctxt)
 	info->fwd_ctxt = fwd_ctxt;
 }
 
+static void __diag_rpmsg_register(void);
+
 int diag_rpmsg_init(void)
 {
 	uint8_t peripheral;
 	struct diag_rpmsg_info *rpmsg_info = NULL;
 
+	__diag_rpmsg_register();
 	for (peripheral = 0; peripheral < NUM_PERIPHERALS; peripheral++) {
 		switch (peripheral) {
 		case PERIPHERAL_WDSP:
@@ -1118,5 +1121,8 @@ static struct rpmsg_driver diag_rpmsg_drv = {
 	.callback	= diag_rpmsg_notify_cb,
 	.remove		= diag_rpmsg_remove,
 };
-module_rpmsg_driver(diag_rpmsg_drv);
 
+static void __diag_rpmsg_register(void)
+{
+	register_rpmsg_driver(&diag_rpmsg_drv);
+}

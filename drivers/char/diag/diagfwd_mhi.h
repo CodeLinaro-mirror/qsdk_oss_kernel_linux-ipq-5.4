@@ -38,7 +38,7 @@
 #define DIAG_MHI_NAME_SZ	24
 
 /* Below mhi  device ids are from mhi controller */
-#define MHI_DEV_ID_1 0x306
+#define MHI_DEV_ID_1 0x0308
 #define MHI_DEV_ID_2 0x1101
 #define MHI_DEV_ID_3 0x1103
 
