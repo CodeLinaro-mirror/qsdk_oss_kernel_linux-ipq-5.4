@@ -17,7 +17,6 @@
 #include <linux/dma-mapping.h>
 #include <linux/dma-direction.h>
 #include <linux/mhi.h>
-#include <linux/usb/usb_qdss.h>
 #include <linux/of.h>
 #include <linux/delay.h>
 #include "qdss_bridge.h"
@@ -25,8 +24,71 @@
 #define MODULE_NAME "qdss_bridge"
 #define INIT_STATUS -1
 
+/*USB Stubs for QDSS Start*/
+#define USB_QDSS_CH_MDM "qdss_mdm"
+#define USB_QDSS_CH_MSM "qdss"
+
+struct qdss_request {
+        char *buf;
+        int length;
+        int actual;
+        int status;
+        void *context;
+        struct scatterlist *sg;
+        unsigned int num_sgs;
+        unsigned int num_mapped_sgs;
+};
+
+struct usb_qdss_ch {
+        const char *name;
+        struct list_head list;
+        void (*notify)(void *priv, unsigned int event,
+                struct qdss_request *d_req, struct usb_qdss_ch *ch);
+        void *priv;
+        void *priv_usb;
+        int app_conn;
+};
+
+enum qdss_state {
+        USB_QDSS_CONNECT,
+        USB_QDSS_DISCONNECT,
+        USB_QDSS_CTRL_READ_DONE,
+        USB_QDSS_DATA_WRITE_DONE,
+};
+
+struct qdss_req {
+        struct usb_request *usb_req;
+        struct completion write_done;
+        struct qdss_request *qdss_req;
+        struct list_head list;
+};
+
+static inline struct usb_qdss_ch *usb_qdss_open(const char *name, void *priv,
+                void (*n)(void *, unsigned int event,
+                struct qdss_request *d, struct usb_qdss_ch *c))
+{
+        return ERR_PTR(-ENODEV);
+}
+
+static inline int usb_qdss_write(struct usb_qdss_ch *c, struct qdss_request *d)
+{
+        return -ENODEV;
+}
+
+static inline int usb_qdss_alloc_req(struct usb_qdss_ch *c, int n_wr)
+{
+        return -ENODEV;
+}
+
+
+static inline void usb_qdss_close(struct usb_qdss_ch *ch) { }
+
+static inline void usb_qdss_free_req(struct usb_qdss_ch *ch) { }
+
+/*USB Stubs for QDSS END */ 
+
 static struct class *mhi_class;
-static enum mhi_dev_state dev_state = INIT_STATUS;
+static enum mhi_state dev_state = INIT_STATUS;
 static enum mhi_ch curr_chan;
 static struct qdss_bridge_drvdata *bridge_drvdata;
 
@@ -329,7 +391,7 @@ static const struct attribute_group *qdss_bridge_groups[] = {
 static void mhi_read_work_fn(struct work_struct *work)
 {
 	int err = 0;
-	enum MHI_FLAGS mhi_flags = MHI_EOT;
+	enum mhi_flags mhi_flags = MHI_EOT;
 	struct qdss_buf_tbl_lst *entry;
 
 	struct qdss_bridge_drvdata *drvdata =
@@ -349,7 +411,7 @@ static void mhi_read_work_fn(struct work_struct *work)
 			break;
 		}
 
-		err = mhi_queue_transfer(drvdata->mhi_dev, DMA_FROM_DEVICE,
+		err = mhi_queue_buf(drvdata->mhi_dev, DMA_FROM_DEVICE,
 					entry->buf, drvdata->mtu, mhi_flags);
 		if (err) {
 			pr_err_ratelimited("Unable to read from MHI buffer err:%d",
@@ -702,7 +764,7 @@ static ssize_t mhi_uci_read(struct file *file,
 		drvdata->cur_buf = NULL;
 
 		if (drvdata->opened == ENABLE)
-			ret = mhi_queue_transfer(mhi_dev, DMA_FROM_DEVICE,
+			ret = mhi_queue_buf(mhi_dev, DMA_FROM_DEVICE,
 						 uci_buf->buf, drvdata->mtu,
 						 MHI_EOT);
 		else
@@ -748,7 +810,7 @@ static int mhi_queue_inbound(struct qdss_bridge_drvdata *drvdata)
 
 		entry->buf = buf;
 
-		ret = mhi_queue_transfer(mhi_dev, DMA_FROM_DEVICE, buf,
+		ret = mhi_queue_buf(mhi_dev, DMA_FROM_DEVICE, buf,
 					drvdata->mtu,
 					MHI_EOT);
 		if (ret) {
@@ -878,11 +940,9 @@ static int qdss_mhi_probe(struct mhi_device *mhi_dev,
 				const struct mhi_device_id *id)
 {
 	int ret;
-	bool def = false;
 	unsigned int baseminor = 0;
 	unsigned int count = 1;
 	struct qdss_bridge_drvdata *drvdata;
-	struct device_node *of_node = mhi_dev->dev.of_node;
 	dev_t dev;
 
 	pr_debug("probe dev state: %d chan: %s curr_chan: %d\n",
@@ -890,10 +950,8 @@ static int qdss_mhi_probe(struct mhi_device *mhi_dev,
 		  id->chan,
 		  curr_chan);
 
-	def = of_property_read_bool(of_node, "mhi,default-channel");
 	if (dev_state == INIT_STATUS) {
-		if (!def)
-			return -EINVAL;
+		pr_err("TRACK: %s[%d]\n", __func__, __LINE__);
 		if (!strcmp(id->chan, "QDSS"))
 			curr_chan = QDSS;
 		if (!strcmp(id->chan, "IP_HW_QDSS"))
@@ -945,7 +1003,7 @@ static int qdss_mhi_probe(struct mhi_device *mhi_dev,
 		goto exit_cdev_add;
 	}
 
-	drvdata->mode = MHI_TRANSFER_TYPE_USB;
+	drvdata->mode = MHI_TRANSFER_TYPE_UCI;
 	drvdata->mtu = min_t(size_t, id->driver_data, mhi_dev->mtu);
 	drvdata->mhi_dev = mhi_dev;
 	mhi_device_set_devdata(mhi_dev, drvdata);
@@ -971,8 +1029,8 @@ exit_unreg_chrdev_region:
 }
 
 static const struct mhi_device_id qdss_mhi_match_table[] = {
-	{ .chan = "QDSS", .driver_data = 0x8000 },
 	{ .chan = "IP_HW_QDSS", .driver_data = 0x8000 },
+	{ .chan = "QDSS", .driver_data = 0x8000 },
 	{},
 };
 
