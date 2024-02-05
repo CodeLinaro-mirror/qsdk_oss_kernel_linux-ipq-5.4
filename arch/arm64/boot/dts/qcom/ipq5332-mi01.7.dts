@@ -80,7 +80,7 @@
 
 	reserved-memory {
 
-		/delete-node/ q6_region;
+		/delete-node/ wcnss@4a900000;
 
 		q6_mem_regions: q6_mem_regions@4A900000  {
 			no-map;
