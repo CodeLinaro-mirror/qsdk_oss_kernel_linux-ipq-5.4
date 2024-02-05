@@ -753,6 +753,22 @@
 				};
 			};
 		};
+		wifi6: wifi6@f00000 {
+			compatible  = "qcom,cnss-qcn9160";
+			msi-parent = <&v2m0>;
+			qcom,multipd_arch;
+			qcom,userpd-subsys-name = "q6v5_wcss_userpd4";
+			qcom,rproc = <&q6_wcss_pd4>;
+			qcom,tgt-mem-mode = <0>;
+			qcom,board_id = <0x101>;
+			qcom,bdf-addr = <0x51E00000 0x51E00000 0x51E00000 0x0 0x0 0x0>;
+			qcom,caldb-addr = <0x52E00000 0x52E00000 0x52E00000 0x0 0x0 0x0>;
+			qcom,caldb-size = <0x500000>;
+			m3-dump-addr = <0x52C00000>;
+			qcom,pci_slot_id = <2>;
+			mem-region = <&q6_qcn9160_data_1>;
+			status = "ok";
+		};
 	};
 };
 
@@ -808,17 +824,3 @@
 	interrupts = <0 410 1>;
 };
 
-&wifi3 {
-	qcom,multipd_arch;
-	qcom,userpd-subsys-name = "q6v5_wcss_userpd4";
-	qcom,rproc = <&q6_wcss_pd4>;
-	qcom,tgt-mem-mode = <0>;
-	qcom,board_id = <0x101>;
-	qcom,bdf-addr = <0x51E00000 0x51E00000 0x51E00000 0x0 0x0 0x0>;
-	qcom,caldb-addr = <0x52E00000 0x52E00000 0x52E00000 0x0 0x0 0x0>;
-	qcom,caldb-size = <0x500000>;
-	m3-dump-addr = <0x52C00000>;
-	qcom,pci_slot_id = <2>;
-	mem-region = <&q6_qcn9160_data_1>;
-	status = "ok";
-};
