@@ -91,13 +91,13 @@
 			reg = <0x0 0x4DB00000 0x0 0x01200000>;
 		};
 
-		qcn9224_pcie0: qcn9224_pcie0@4ec00000 {
+		qcn9224_pcie0: qcn9224_pcie0@4ed00000 {
 			no-map;
 			reg = <0x0 0x4ED00000 0x0 0x02500000>;
 			status = "disabled";
 		};
 
-		qcn9224_pcie1: qcn9224_pcie1@51100000 {
+		qcn9224_pcie1: qcn9224_pcie1@51200000 {
 			no-map;
 			reg = <0x0 0x51200000 0x0 0x02500000>;
 			status = "disabled";

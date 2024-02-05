@@ -19,6 +19,10 @@
 
 #include "qca8k.h"
 
+bool tx_hdr_offload = false;
+module_param(tx_hdr_offload, bool, S_IRUGO);
+MODULE_PARM_DESC(tx_hdr_offload, "Offload ath hdr process in Tx direction");
+
 #define MIB_DESC(_s, _o, _n)	\
 	{			\
 		.size = (_s),	\
@@ -100,6 +104,22 @@ qca8k_split_addr(u32 regaddr, u16 *r1, u16 *r2, u16 *page)
 
 	regaddr >>= 3;
 	*page = regaddr & 0x3ff;
+}
+
+static void
+mht_split_addr(uint32_t regaddr, uint16_t *r1, uint16_t *r2, uint16_t *page,
+		uint16_t *switch_phy_id)
+{
+	*r1 = regaddr & 0x1c;
+
+	regaddr >>= 5;
+	*r2 = regaddr & 0x7;
+
+	regaddr >>= 3;
+	*page = regaddr & 0xffff;
+
+	regaddr >>= 16;
+	*switch_phy_id = regaddr & 0xff;
 }
 
 static u32
@@ -189,6 +209,21 @@ qca8k_read(struct qca8k_priv *priv, u32 reg)
 	u16 r1, r2, page;
 	u32 val;
 
+	if (priv->chip_id == QCA8K_ID_QCA8386) {
+		u16 switch_phy_id, lo, hi;
+		struct mii_bus *bus = priv->bus;
+		mht_split_addr(reg, &r1, &r2, &page, &switch_phy_id);
+
+		mutex_lock_nested(&bus->mdio_lock, MDIO_MUTEX_NESTED);
+		bus->write(bus, 0x18 | (switch_phy_id >> 5), switch_phy_id & 0x1f, page);
+		udelay(100);
+		lo = bus->read(bus, 0x10 | r2, r1);
+		hi = bus->read(bus, 0x10 | r2, r1 + 2);
+		mutex_unlock(&bus->mdio_lock);
+
+		return (hi << 16) | lo;
+	}
+
 	qca8k_split_addr(reg, &r1, &r2, &page);
 
 	mutex_lock_nested(&priv->bus->mdio_lock, MDIO_MUTEX_NESTED);
@@ -209,6 +244,23 @@ qca8k_write(struct qca8k_priv *priv, u32 reg, u32 val)
 {
 	u16 r1, r2, page;
 
+	if (priv->chip_id == QCA8K_ID_QCA8386) {
+		u16 switch_phy_id, lo, hi;
+		struct mii_bus *bus = priv->bus;
+		mht_split_addr(reg, &r1, &r2, &page, &switch_phy_id);
+		lo = val & 0xffff;
+		hi = (u16) (val >> 16);
+
+		mutex_lock_nested(&bus->mdio_lock, MDIO_MUTEX_NESTED);
+		bus->write(bus, 0x18 | (switch_phy_id >> 5), switch_phy_id & 0x1f, page);
+		udelay(100);
+		bus->write(bus, 0x10 | r2, r1, lo);
+		bus->write(bus, 0x10 | r2, r1 + 2, hi);
+		mutex_unlock(&bus->mdio_lock);
+
+		return;
+	}
+
 	qca8k_split_addr(reg, &r1, &r2, &page);
 
 	mutex_lock_nested(&priv->bus->mdio_lock, MDIO_MUTEX_NESTED);
@@ -227,6 +279,33 @@ qca8k_rmw(struct qca8k_priv *priv, u32 reg, u32 mask, u32 val)
 {
 	u16 r1, r2, page;
 	u32 ret;
+
+	if (priv->chip_id == QCA8K_ID_QCA8386) {
+		u16 switch_phy_id, lo, hi;
+		struct mii_bus *bus = priv->bus;
+		mht_split_addr(reg, &r1, &r2, &page, &switch_phy_id);
+
+		mutex_lock_nested(&bus->mdio_lock, MDIO_MUTEX_NESTED);
+		bus->write(bus, 0x18 | (switch_phy_id >> 5), switch_phy_id & 0x1f, page);
+		udelay(100);
+		lo = bus->read(bus, 0x10 | r2, r1);
+		hi = bus->read(bus, 0x10 | r2, r1 + 2);
+		ret = (hi << 16) | lo;
+
+		ret &= ~mask;
+		ret |= val;
+
+		lo = ret & 0xffff;
+		hi = (u16) (ret >> 16);
+
+		bus->write(bus, 0x18 | (switch_phy_id >> 5), switch_phy_id & 0x1f, page);
+		udelay(100);
+		bus->write(bus, 0x10 | r2, r1, lo);
+		bus->write(bus, 0x10 | r2, r1 + 2, hi);
+		mutex_unlock(&bus->mdio_lock);
+
+		return 0;
+	}
 
 	qca8k_split_addr(reg, &r1, &r2, &page);
 
@@ -750,12 +829,12 @@ qca8k_setup(struct dsa_switch *ds)
 		if (dsa_is_user_port(ds, i))
 			qca8k_port_set_status(priv, i, 0);
 
-	/* Forward all unknown frames to CPU port for Linux processing */
+	/* unknown frames to CPU and all switch ports(merged with portvlan member) */
 	qca8k_write(priv, QCA8K_REG_GLOBAL_FW_CTRL1,
-		    BIT(priv->cpu_port) << QCA8K_GLOBAL_FW_CTRL1_IGMP_DP_S |
-		    BIT(priv->cpu_port) << QCA8K_GLOBAL_FW_CTRL1_BC_DP_S |
-		    BIT(priv->cpu_port) << QCA8K_GLOBAL_FW_CTRL1_MC_DP_S |
-		    BIT(priv->cpu_port) << QCA8K_GLOBAL_FW_CTRL1_UC_DP_S);
+		    (BIT(priv->cpu_port) | dsa_user_ports(ds)) << QCA8K_GLOBAL_FW_CTRL1_IGMP_DP_S |
+		    (BIT(priv->cpu_port) | dsa_user_ports(ds)) << QCA8K_GLOBAL_FW_CTRL1_BC_DP_S |
+		    (BIT(priv->cpu_port) | dsa_user_ports(ds)) << QCA8K_GLOBAL_FW_CTRL1_MC_DP_S |
+		    (BIT(priv->cpu_port) | dsa_user_ports(ds)) << QCA8K_GLOBAL_FW_CTRL1_UC_DP_S);
 
 	/* Setup connection between CPU port & user ports */
 	for (i = 0; i < QCA8K_NUM_PORTS; i++) {
@@ -773,28 +852,45 @@ qca8k_setup(struct dsa_switch *ds)
 				  QCA8K_PORT_LOOKUP_MEMBER,
 				  BIT(priv->cpu_port));
 
-			/* dsiable ARP Auto-learning by default */
-			qca8k_reg_clear(priv, QCA8K_PORT_LOOKUP_CTRL(i),
+			/* enable ARP Auto-learning by default */
+			qca8k_reg_set(priv, QCA8K_PORT_LOOKUP_CTRL(i),
 				      QCA8K_PORT_LOOKUP_LEARN);
 
 			/* For port based vlans to work we need to set the
 			 * default egress vid
 			 */
 			qca8k_rmw(priv, QCA8K_EGRESS_VLAN(i),
-				  0xffff << shift, 1 << shift);
+				  0xffff << shift, QCA8K_PORT_VID_DEF << shift);
 			qca8k_write(priv, QCA8K_REG_PORT_VLAN_CTRL0(i),
-				    QCA8K_PORT_VLAN_CVID(1) |
-				    QCA8K_PORT_VLAN_SVID(1));
+				    QCA8K_PORT_VLAN_CVID(QCA8K_PORT_VID_DEF) |
+				    QCA8K_PORT_VLAN_SVID(QCA8K_PORT_VID_DEF));
 		}
 
 		/* For port based vlans to work we need to set the
 		 * default egress vlan mode as untouched
 		 */
-		qca8k_write(priv, QCA8K_REG_PORT_VLAN_CTRL1(i),
-			    QCA8K_PORT_VLAN_EGMODE(0x3));
+		qca8k_rmw(priv, QCA8K_REG_PORT_VLAN_CTRL1(i),
+			QCA8K_PORT_VLAN_EGMODE_MASK, QCA8K_PORT_VLAN_EGMODE(0x3));
 		qca8k_rmw(priv, QCA8K_ROUTE_EGRESS_VLAN,
 			QCA8K_ROUTE_EGRESS_VLAN_MASK(i),
 			QCA8K_ROUTE_EGRESS_VLAN_VAL(i, 0x3));
+	}
+
+	if (priv->chip_id == QCA8K_ID_QCA8386) {
+		/* using 4 bytes ath header */
+		qca8k_write(priv, QCA8K_HEADER_CTL,
+			QCA8K_HEADER_LENGTH_SEL_VAL(1) | QCA8K_HEADER_TYPE_VAL_VAL(QCA_HDR_TYPE_VALUE));
+
+		/* recover mht rx mode */
+		qca8k_rmw(priv, QCA8K_REG_PORT_HDR_CTRL(priv->cpu_port), QCA8K_PORT_HDR_CTRL_RX_MASK,
+			QCA8K_PORT_HDR_CTRL_MGMT << QCA8K_PORT_HDR_CTRL_RX_S);
+
+		/* tx_hdr_offload control for MHT holb */
+		if (tx_hdr_offload)
+			qca8k_reg_clear(priv, QCA8K_PORT_LOOKUP_CTRL(priv->cpu_port),
+				      QCA8K_PORT_LOOKUP_LEARN);
+
+		ds->tx_hdr_offload = tx_hdr_offload;
 	}
 
 	/* Flush the FDB table */
@@ -870,6 +966,17 @@ qca8k_teardown(struct dsa_switch *ds)
 		    (BIT(priv->cpu_port) | dsa_user_ports(ds)) << QCA8K_GLOBAL_FW_CTRL1_BC_DP_S |
 		    (BIT(priv->cpu_port) | dsa_user_ports(ds)) << QCA8K_GLOBAL_FW_CTRL1_MC_DP_S |
 		    (BIT(priv->cpu_port) | dsa_user_ports(ds)) << QCA8K_GLOBAL_FW_CTRL1_UC_DP_S);
+
+	if (priv->chip_id == QCA8K_ID_QCA8386) {
+		/* recover mht rx mode */
+		qca8k_rmw(priv, QCA8K_REG_PORT_HDR_CTRL(priv->cpu_port), QCA8K_PORT_HDR_CTRL_RX_MASK,
+			QCA8K_PORT_HDR_CTRL_MGMT << QCA8K_PORT_HDR_CTRL_RX_S);
+
+		/* tx_hdr_offload control for MHT holb */
+		if (tx_hdr_offload)
+			qca8k_reg_set(priv, QCA8K_PORT_LOOKUP_CTRL(priv->cpu_port),
+					  QCA8K_PORT_LOOKUP_LEARN);
+	}
 
 	/* Flush the FDB table */
 	qca8k_fdb_flush(priv);
@@ -1152,7 +1259,10 @@ qca8k_port_fdb_dump(struct dsa_switch *ds, int port,
 static enum dsa_tag_protocol
 qca8k_get_tag_protocol(struct dsa_switch *ds, int port)
 {
-	return DSA_TAG_PROTO_QCA;
+	struct qca8k_priv *priv = (struct qca8k_priv *)ds->priv;
+
+	return (priv->chip_id == QCA8K_ID_QCA8386) ? DSA_TAG_PROTO_QCA_4B :
+		DSA_TAG_PROTO_QCA;
 }
 
 static const struct dsa_switch_ops qca8k_switch_ops = {
@@ -1209,7 +1319,7 @@ qca8k_sw_probe(struct mdio_device *mdiodev)
 	id = qca8k_read(priv, QCA8K_REG_MASK_CTRL);
 	id >>= QCA8K_MASK_CTRL_ID_S;
 	id &= QCA8K_MASK_CTRL_ID_M;
-	if (id != QCA8K_ID_QCA8337)
+	if (id != QCA8K_ID_QCA8337 && id != QCA8K_ID_QCA8386)
 		return -ENODEV;
 
 	priv->chip_id = id;
@@ -1278,6 +1388,7 @@ static SIMPLE_DEV_PM_OPS(qca8k_pm_ops,
 static const struct of_device_id qca8k_of_match[] = {
 	{ .compatible = "qca,qca8334" },
 	{ .compatible = "qca,qca8337" },
+	{ .compatible = "qca,qca8386" },
 	{ /* sentinel */ },
 };
 

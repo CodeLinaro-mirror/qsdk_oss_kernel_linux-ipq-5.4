@@ -307,6 +307,8 @@ qce_aead_ccm_prepare_buf_assoclen(struct aead_request *req)
 		rctx->dst_sg = rctx->src_sg;
 	}
 
+	kfree(rctx->adata);
+
 	return 0;
 err_free:
 	sg_free_table(&rctx->src_tbl);
@@ -811,7 +813,7 @@ static int qce_aead_register_one(const struct qce_aead_def *def, struct qce_devi
 	alg->init			= qce_aead_init;
 	alg->exit			= qce_aead_exit;
 
-	alg->base.cra_priority		= 300;
+	alg->base.cra_priority		= 10;
 	alg->base.cra_flags		= CRYPTO_ALG_ASYNC |
 					  CRYPTO_ALG_ALLOCATES_MEMORY |
 					  CRYPTO_ALG_KERN_DRIVER_ONLY |

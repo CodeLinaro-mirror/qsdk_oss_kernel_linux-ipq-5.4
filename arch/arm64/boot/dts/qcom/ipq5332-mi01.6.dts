@@ -176,7 +176,7 @@
 			phy-mode = "sgmii";
 		};
 
-		dp2 {
+		gmac2:dp2 {
 			device_type = "network";
 			compatible = "qcom,nss-dp";
 			qcom,id = <1>;
@@ -214,6 +214,43 @@
 			phy3: ethernet-phy@3 {
 				reg = <4>;
 				fixup;
+			};
+
+			switch0@10 {
+				compatible = "qca,qca8386";
+				#address-cells = <1>;
+				#size-cells = <0>;
+				reg = <0x10>;
+
+				ports {
+					#address-cells = <1>;
+					#size-cells = <0>;
+
+					port@0 {
+						reg = <0>;
+						label = "cpu";
+						ethernet = <&gmac2>;
+						phy-mode = "sgmii";
+					};
+
+					port@1 {
+						reg = <1>;
+						label = "lan1";
+						phy-handle = <&phy0>;
+					};
+
+					port@2 {
+						reg = <2>;
+						label = "lan2";
+						phy-handle = <&phy1>;
+					};
+
+					port@3 {
+						reg = <3>;
+						label = "lan3";
+						phy-handle = <&phy2>;
+					};
+				};
 			};
 		};
 
@@ -473,6 +510,9 @@
 					reg = <0 0 0 0 0>;
 					qti,disable-rddm-prealloc;
 					qti,rddm-seg-len = <0x1000>;
+					boot-args = <0x2 0x4 0x34 0x3 0x0 0x0     /* MX Rail, GPIO52, Drive strength 0x3 */
+							0x4 0x4 0x18 0x3 0x0 0x0  /* RFA1p2 Rail, GPIO24, Drive strength 0x3 */
+							0x0 0x4 0x0 0x0 0x0 0x0>; /* End of arguments */
 #if defined(__CNSS2__)
 					qrtr_node_id = <0x31>;
 					memory-region = <0>, <&mhi_region1>;

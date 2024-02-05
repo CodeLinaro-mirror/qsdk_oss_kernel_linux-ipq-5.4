@@ -56,10 +56,10 @@
 	 * |RESERVED |  0x4F500000  |           5MB           |
 	 * +---------+--------------+-------------------------+
 	 * |         |              |                         |
-	 * |   MLO   |  0x4FA00000  |          17MB           |
+	 * |   MLO   |  0x4FA00000  |          18MB           |
 	 * +---------+--------------+-------------------------+
 	 * |         |              |                         |
-	 * |  WKK1   |  0x50B00000  |          50MB           |
+	 * |  WKK1   |  0x50C00000  |          50MB           |
 	 * |         |              |                         |
 	 * +---------+--------------+-------------------------+
 	 * |         |              |                         |
@@ -132,12 +132,12 @@
 
 		mlo_global_mem0: mlo_global_mem_0@4FA00000 {
 			no-map;
-			reg = <0x0 0x4FA00000 0x0 0x1100000>;
+			reg = <0x0 0x4FA00000 0x0 0x1200000>;
 		};
 
-		qcn9224_pcie1: qcn9224_pcie1@50B00000 {
+		qcn9224_pcie1: qcn9224_pcie1@50C00000 {
 			no-map;
-			reg = <0x0 0x50B00000 0x0 0x03200000>;
+			reg = <0x0 0x50C00000 0x0 0x03200000>;
 		};
 
 		mhi_region1: dma_pool1@1 {
@@ -173,8 +173,12 @@
 					reg = <0 0 0 0 0>;
 					qti,disable-rddm-prealloc;
 					qti,rddm-seg-len = <0x1000>;
+					boot-args = <0x2 0x4 0x34 0x3 0x0 0x0     /* MX Rail, GPIO52, Drive strength 0x3 */
+							0x4 0x4 0x18 0x3 0x0 0x0  /* RFA1p2 Rail, GPIO24, Drive strength 0x3 */
+							0x0 0x4 0x0 0x0 0x0 0x0>; /* End of arguments */
 #if defined(__CNSS2__)
 					qrtr_node_id = <0x31>;
+					memory-region = <0>, <&mhi_region1>;
 #else
 					qcom,board_id = <0x1019>;
 					qcom,wsi = <&wsi>;
@@ -312,6 +316,7 @@
 			local-mac-address = [000000000000];
 			phy-mode = "sgmii";
 			qcom,ppe-offload-disabled = <1>;
+			qcom,mht-dev = <1>;
 		};
 
 		mdio:mdio@90000 {
@@ -378,6 +383,7 @@
 				switch_lan_bmp = <0x1e>; /* lan port bitmap */
 				switch_wan_bmp = <0x0>;  /* wan port bitmap */
 				link-polling-required = <0>;
+				fdb_sync = "interrupt";
 				link-intr-gpio = <&tlmm 23 0>;
 				qcom,port_phyinfo {
 					port@0 {
@@ -437,8 +443,10 @@
 		edma@3ab00000 {
 			qcom,txdesc-ring-start = <4>;		/* Tx desc ring start ID */
 			qcom,txdesc-rings = <12>;		/* Total number of Tx desc rings to be provisioned */
+			qcom,mht-txdesc-rings = <8>;            /* Extra Tx desc rings to be provisioned for MHT SW ports. */
 			qcom,txcmpl-ring-start = <4>;		/* Tx complete ring start ID */
 			qcom,txcmpl-rings = <12>;		/* Total number of Tx complete rings to be provisioned */
+			qcom,mht-txcmpl-rings = <8>;		/* Extra Tx complete rings to be provisioned for mht sw ports. */
 			qcom,rxfill-ring-start = <4>;		/* Rx fill ring start ID */
 			qcom,rxfill-rings = <4>;		/* Total number of Rx fill rings to be provisioned */
 			qcom,rxdesc-ring-start = <12>;		/* Rx desc ring start ID */
@@ -450,10 +458,12 @@
 			/* PPE-DS node format: <Rx-fill Tx-cmpl Rx Tx Queue-base Queue-count> */
 			qcom,ppeds-map = <1 1 1 1 32 8>,	/* PPEDS Node #1 ring and queue map */
 					<2 2 2 2 40 8>;		/* PPEDS Node #2 ring and queue map */
-			qcom,txdesc-map = <8 9 10 11>,		/* Port0 per-core Tx ring map */
-					  <12 13 14 15>,	/* Port1 per-core Tx ring map */
-					  <4 5 6 7>;		/* used only for packets from  vp*/
-			qcom,txdesc-fc-grp-map = <1 2>;		/* Per GMAC flow control group map */
+			qcom,txdesc-map = <8 9 10 11>,          /* Port0 per-core Tx ring map */
+					  <12 13 14 15>,        /* MHT-Port1 per-core Tx ring map */
+					  <4 5 6 7>,            /* MHT-Port2 per-core Tx ring map/packets from  vp*/
+					  <16 17 18 19>,        /* MHT-Port3 per-core Tx ring map */
+					  <20 21 22 23>;        /* MHT-Port4 per-core Tx ring map */
+			qcom,txdesc-fc-grp-map = <1 2 3 4 5>;   /* Per GMAC flow control group map */
 			qcom,rxfill-map = <4 5 6 7>;		/* Per-core Rx fill ring map */
 			qcom,rxdesc-map = <12 13 14 15>;	/* Per-core Rx desc ring map */
 			qcom,rx-queue-start = <0>;		/* Rx queue start */
@@ -487,7 +497,15 @@
 				<0 152 4>,			/* PPEDS Node #1(RxFill Desc ring id #1) Rx Fill IRQ info */
 				<0 161 4>,			/* PPEDS Node #2(TxComp ring id #2) TxComplete IRQ info */
 				<0 129 4>,			/* PPEDS Node #2(Rx Desc ring id #2) Rx Desc IRQ info */
-				<0 153 4>;			/* PPEDS Node #2(RxFill Desc ring id #2) Rx Fill IRQ info */
+				<0 153 4>,                      /* PPEDS Node #2(RxFill Desc ring id #2) Rx Fill IRQ info */
+				   <0 175 4>,                   /* MHT port Tx complete ring id #16 IRQ info */
+				   <0 176 4>,                   /* MHT port Tx complete ring id #17 IRQ info */
+				   <0 177 4>,                   /* MHT port Tx complete ring id #18 IRQ info */
+				   <0 178 4>,                   /* MHT port Tx complete ring id #19 IRQ info */
+				   <0 179 4>,                   /* MHT port Tx complete ring id #20 IRQ info */
+				   <0 180 4>,                   /* MHT port Tx complete ring id #21 IRQ info */
+				   <0 181 4>,                   /* MHT port Tx complete ring id #22 IRQ info */
+				   <0 182 4>;                   /* MHT port Tx complete ring id #23 IRQ info */
 		};
 
 		serial@78af000 {
@@ -583,6 +601,29 @@
                         	status = "ok";
                 	};
 		};
+
+		/delete-node/ wifi1@f00000;
+
+		wifi1: wifi1@f00000 {
+			qcom,multipd_arch;
+			compatible = "qcom,cnss-qcn6432" , "qcom,qcn6432-wifi";
+			interrupt-bmap = <0x100510>;
+			interrupt-names = "umac_reset";
+			msi-parent = <&v2m0>;
+			qcom,rproc = <&q6_wcss_pd2>;
+			qcom,rproc_rpd = <&q6v5_wcss>;
+			qcom,userpd-subsys-name = "q6v5_wcss_userpd2";
+			qcom,tgt-mem-mode = <0>;
+			qcom,bdf-addr = <0x4D900000 0x4D900000 0x4D900000 0x0 0x0 0x0>;
+			qcom,caldb-addr = <0x4F000000 0x4F000000 0x4F000000 0x0 0x0 0x0>;
+			qcom,caldb-size = <0x500000>;
+			qcom,board_id = <0x0b0>;
+			mem-region = <&q6_qcn6432_data_1>;
+			memory-region = <&q6_qcn6432_data_1>;
+			qcom,pci_slot_id = <0>;
+			qcom,wsi = <&wsi>;
+			status = "ok";
+		};
 	};
 };
 
@@ -602,23 +643,6 @@
 	status = "ok";
 };
 
-&wifi4 {
-	qcom,multipd_arch;
-	qcom,rproc = <&q6_wcss_pd2>;
-	qcom,rproc_rpd = <&q6v5_wcss>;
-	qcom,userpd-subsys-name = "q6v5_wcss_userpd2";
-	qcom,tgt-mem-mode = <0>;
-	qcom,bdf-addr = <0x4D900000 0x4D900000 0x4D900000 0x0 0x0 0x0>;
-	qcom,caldb-addr = <0x4F000000 0x4F000000 0x4F000000 0x0 0x0 0x0>;
-	qcom,caldb-size = <0x500000>;
-	qcom,board_id = <0x0b0>;
-	mem-region = <&q6_qcn6432_data_1>;
-	memory-region = <&q6_qcn6432_data_1>;
-	qcom,pci_slot_id = <0>;
-	qcom,wsi = <&wsi>;
-	status = "ok";
-};
-
 &qcn9224_pcie1 {
 	status = "ok";
 };
@@ -633,22 +657,22 @@
 	 * +=========+==============+=========+
 	 * |  Region | Start Offset |   Size  |
 	 * +---------+--------------+---------+
-	 * | HREMOTE |  0x50B00000  |   28MB  |
+	 * | HREMOTE |  0x50C00000  |   28MB  |
 	 * +---------+--------------+---------+
-	 * | M3 Dump |  0x52700000  |   1MB   |
+	 * | M3 Dump |  0x52800000  |   1MB   |
 	 * +---------+--------------+---------+
-	 * |   ETR   |  0x52800000  |   1MB   |
+	 * |   ETR   |  0x52900000  |   1MB   |
 	 * +---------+--------------+---------+
-	 * |  Caldb  |  0x52900000  |   8MB   |
+	 * |  Caldb  |  0x52A00000  |   8MB   |
 	 * +---------+--------------+---------+
-	 * |Pageable |  0x53100000  |  12MB   |
+	 * |Pageable |  0x53200000  |  12MB   |
 	 * +==================================+
 	 */
-	base-addr = <0x50B00000>;
-	m3-dump-addr = <0x52700000>;
-	etr-addr = <0x52800000>;
-	caldb-addr = <0x52900000>;
-	pageable-addr = <0x53100000>;
+	base-addr = <0x50C00000>;
+	m3-dump-addr = <0x52800000>;
+	etr-addr = <0x52900000>;
+	caldb-addr = <0x52A00000>;
+	pageable-addr = <0x53200000>;
 	hremote-size = <0x1C00000>;
 	pageable-size = <0xC00000>;
 	tgt-mem-mode = <0x0>;

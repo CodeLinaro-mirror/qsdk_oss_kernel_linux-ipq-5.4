@@ -1,15 +1,181 @@
 // SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause)
 /*
- * IPQ5332 AP-MI01.2 board device tree source
+ * IPQ5332 AP-MI01.13 board device tree source
  *
  * Copyright (c) 2020-2021 The Linux Foundation. All rights reserved.
  * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
+/dts-v1/;
 
 #include "ipq5332.dtsi"
+#include "ipq5332-memory.dtsi"
 
 / {
+	#address-cells = <0x2>;
+	#size-cells = <0x2>;
+	model = "Qualcomm Technologies, Inc. IPQ5332/AP-MI01.13";
+	compatible = "qcom,ipq5332-ap-mi01.13", "qcom,ipq5332";
+	interrupt-parent = <&intc>;
+
+	/*   Layout for IPQ5332 + QCN6432 + QCN9224 + QCN9160
+	 * +==========+==============+========================+
+	 * |         |              |                         |
+	 * |  Region | Start Offset |          Size           |
+	 * |         |              |                         |
+	 * +---------+--------------+-------------------------+
+	 * |   Q6    |              |                         |
+	 * |  code/  |  0x4A900000  |          27MB           |
+	 * |  data   |              |                         |
+	 * +---------+--------------+-------------------------+
+	 * | IPQ5332 |              |                         |
+	 * |  data   |  0x4C400000  |          21MB           |
+	 * +---------+--------------+-------------------------+
+	 * | IPQ5332 |              |                         |
+	 * | M3 Dump |  0x4D900000  |           1MB           |
+	 * +---------+--------------+-------------------------+
+	 * | IPQ5332 |              |                         |
+	 * |  QDSS   |  0x4DA00000  |           1MB           |
+	 * +---------+--------------+-------------------------+
+	 * | IPQ5332 |              |                         |
+	 * |  CALDB  |  0x4DB00000  |           5MB           |
+	 * +---------+--------------+-------------------------+
+	 * |QCN6432_1|              |                         |
+	 * |  data   |  0x4E000000  |          21MB           |
+	 * +---------+--------------+-------------------------+
+	 * |QCN6432_1|              |                         |
+	 * | M3 Dump |  0x4F500000  |           1MB           |
+	 * +---------+--------------+-------------------------+
+	 * |QCN6432_1|              |                         |
+	 * |  QDSS   |  0x4F600000  |           1MB           |
+	 * +---------+--------------+-------------------------+
+	 * |QCN6432_1|              |                         |
+	 * |  CALDB  |  0x4F700000  |           5MB           |
+	 * +---------+--------------+-------------------------+
+	 * | QCN9160 |              |                         |
+	 * |  data   |  0x4FC00000  |          14MB           |
+	 * +---------+--------------+-------------------------+
+	 * | QCN9160 |              |                         |
+	 * | M3 Dump |  0x50A00000  |           1MB           |
+	 * +---------+--------------+-------------------------+
+	 * | QCN9160 |              |                         |
+	 * |  QDSS   |  0x50B00000  |           1MB           |
+	 * +---------+--------------+-------------------------+
+	 * | QCN9160 |              |                         |
+	 * |  CALDB  |  0x50C00000  |           5MB           |
+	 * +---------+--------------+-------------------------+
+	 * |         |              |                         |
+	 * |   MLO   |  0x51100000  |          18MB           |
+	 * +---------+--------------+-------------------------+
+	 * |         |              |                         |
+	 * |  WKK1   |  0x52300000  |          50MB           |
+	 * |         |              |                         |
+	 * +---------+--------------+-------------------------+
+	 * |         |              |                         |
+	 * |  MHI1   |    DYNAMIC   |          9MB            |
+	 * |         |              |                         |
+	 * +==================================================+
+	 * |                                                  |
+	 * |                                                  |
+	 * |                                                  |
+	 * |             Rest of memory for Linux             |
+	 * |                                                  |
+	 * |                                                  |
+	 * |                                                  |
+	 * +==================================================+
+	 */
+
+	reserved-memory {
+
+		/delete-node/ q6_region;
+
+		q6_mem_regions: q6_mem_regions@4A900000  {
+			no-map;
+			reg = <0x0 0x4a900000 0x0 0x6800000>;
+		};
+
+		q6_code_data: q6_code_data@4A900000 {
+			no-map;
+			reg = <0x0 0x4a900000 0x0 0x1B00000>;
+		};
+
+		q6_ipq5332_data: q6_ipq5332_data@4C400000 {
+			no-map;
+			reg = <0x0 0x4C400000 0x0 0x1500000>;
+		};
+
+		m3_dump: m3_dump@4D900000 {
+			no-map;
+			reg = <0x0 0x4D900000 0x0 0x100000>;
+		};
+
+		q6_etr_region: q6_etr_dump@4DA00000 {
+			no-map;
+			reg = <0x0 0x4DA00000 0x0 0x100000>;
+		};
+
+		q6_ipq5332_caldb: q6_ipq5332_caldb@4DB00000 {
+			no-map;
+			reg = <0x0 0x4DB00000 0x0 0x500000>;
+		};
+
+		q6_qcn6432_data_1: q6_qcn6432_data_1@4E000000 {
+			no-map;
+			reg = <0x0 0x4E000000 0x0 0x1500000>;
+		};
+
+		m3_dump_qcn6432_1: m3_dump_qcn6432_1@4F500000 {
+			no-map;
+			reg = <0x0 0x4F500000 0x0 0x100000>;
+                };
+
+		q6_qcn6432_etr_1: q6_qcn6432_etr_1@4F600000 {
+			no-map;
+			reg = <0x0 0x4F600000 0x0 0x100000>;
+		};
+
+		q6_qcn6432_caldb_1: q6_qcn6432_caldb_1@4F700000 {
+			no-map;
+			reg = <0x0 0x4F700000 0x0 0x500000>;
+		};
+
+		q6_qcn9160_data_1: q6_qcn9160_data_1@4FC00000 {
+			no-map;
+			reg = <0x0 0x4FC00000 0x0 0xe00000>;
+		};
+
+		m3_dump_qcn9160_2: m3_dump_qcn9160_2@50A00000 {
+			no-map;
+			reg = <0x0 0x50A00000 0x0 0x100000>;
+		};
+
+		q6_qcn9160_etr_1: q6_qcn9160_etr_1@50B00000 {
+			no-map;
+			reg = <0x0 0x50B00000 0x0 0x100000>;
+		};
+
+		q6_qcn9160_caldb_1: q6_qcn9160_caldb_1@50C00000 {
+			no-map;
+			reg = <0x0 0x50C00000 0x0 0x500000>;
+		};
+
+		mlo_global_mem0: mlo_global_mem_0@51100000 {
+			no-map;
+			reg = <0x0 0x51100000 0x0 0x1200000>;
+		};
+
+		qcn9224_pcie1: qcn9224_pcie1@52300000 {
+			no-map;
+			reg = <0x0 0x52300000 0x0 0x03200000>;
+		};
+
+		mhi_region1: dma_pool1@1 {
+			compatible = "shared-dma-pool";
+			no-map;
+			size = <0x0 0x00900000>;
+                };
+	};
+
 	aliases {
 		serial0 = &blsp1_uart0;
 		serial1 = &blsp1_uart1;
@@ -19,9 +185,38 @@
 
 	chosen {
 		stdout-path = "serial0";
+		bootargs-append = " clk_ignore_unused";
 	};
 
 	soc {
+		pcie1_phy: phy@4b1000 {
+			status = "ok";
+		};
+
+		pcie1: pcie@18000000 {
+			num-lanes = <1>;
+			phys = <&pcie1_phy>;
+			status = "ok";
+			pcie1_rp {
+				reg = <0 0 0 0 0>;
+
+				qcom,mhi@1 {
+					reg = <0 0 0 0 0>;
+					qti,disable-rddm-prealloc;
+					qti,rddm-seg-len = <0x1000>;
+					boot-args = <0x2 0x4 0x34 0x3 0x0 0x0     /* MX Rail, GPIO52, Drive strength 0x3 */
+							0x4 0x4 0x18 0x3 0x0 0x0  /* RFA1p2 Rail, GPIO24, Drive strength 0x3 */
+							0x0 0x4 0x0 0x0 0x0 0x0>; /* End of arguments */
+#if defined(__CNSS2__)
+					qrtr_node_id = <0x31>;
+					memory-region = <0>, <&mhi_region1>;
+#else
+					qcom,board_id = <0x1019>;
+					qcom,wsi = <&wsi>;
+#endif
+				};
+			};
+		};
 		pinctrl@1000000 {
 			spi_0_pins: spi0-pinmux {
 				spi_clock {
@@ -127,8 +322,6 @@
 					output-low;
 				};
 			};
-
-
 		};
 
 		dp1 {
@@ -144,7 +337,7 @@
 			phy-mode = "sgmii";
 		};
 
-		gmac2:dp2 {
+		dp2 {
 			device_type = "network";
 			compatible = "qcom,nss-dp";
 			qcom,id = <1>;
@@ -182,49 +375,6 @@
 			phy3: ethernet-phy@3 {
 				reg = <4>;
 				fixup;
-			};
-
-			switch0@10 {
-				compatible = "qca,qca8386";
-				#address-cells = <1>;
-				#size-cells = <0>;
-				reg = <0x10>;
-
-				ports {
-					#address-cells = <1>;
-					#size-cells = <0>;
-
-					port@0 {
-						reg = <0>;
-						label = "cpu";
-						ethernet = <&gmac2>;
-						phy-mode = "sgmii";
-					};
-
-					port@1 {
-						reg = <1>;
-						label = "lan1";
-						phy-handle = <&phy0>;
-					};
-
-					port@2 {
-						reg = <2>;
-						label = "lan2";
-						phy-handle = <&phy1>;
-					};
-
-					port@3 {
-						reg = <3>;
-						label = "lan3";
-						phy-handle = <&phy2>;
-					};
-
-					port@4 {
-						reg = <4>;
-						label = "lan4";
-						phy-handle = <&phy3>;
-					};
-				};
 			};
 		};
 
@@ -320,19 +470,14 @@
 				};
 			};
 		};
-
-		eud@78000 {
-			status = "ok";
-		};
-
 		/* EDMA host driver configuration for the board */
 		edma@3ab00000 {
 			qcom,txdesc-ring-start = <4>;		/* Tx desc ring start ID */
 			qcom,txdesc-rings = <12>;		/* Total number of Tx desc rings to be provisioned */
-			qcom,mht-txdesc-rings = <8>;		/* Extra Tx desc rings to be provisioned for MHT SW ports */
+			qcom,mht-txdesc-rings = <8>;            /* Extra Tx desc rings to be provisioned for MHT SW ports. */
 			qcom,txcmpl-ring-start = <4>;		/* Tx complete ring start ID */
 			qcom,txcmpl-rings = <12>;		/* Total number of Tx complete rings to be provisioned */
-			qcom,mht-txcmpl-rings = <8>;            /* Extra Tx complete rings to be provisioned for mht sw ports. */
+			qcom,mht-txcmpl-rings = <8>;		/* Extra Tx complete rings to be provisioned for mht sw ports. */
 			qcom,rxfill-ring-start = <4>;		/* Rx fill ring start ID */
 			qcom,rxfill-rings = <4>;		/* Total number of Rx fill rings to be provisioned */
 			qcom,rxdesc-ring-start = <12>;		/* Rx desc ring start ID */
@@ -346,9 +491,9 @@
 					<2 2 2 2 40 8>;		/* PPEDS Node #2 ring and queue map */
 			qcom,txdesc-map = <8 9 10 11>,		/* Port0 per-core Tx ring map */
 					  <12 13 14 15>,	/* MHT-Port1 per-core Tx ring map */
-					  <4 5 6 7>,            /* MHT-Port2 per-core Tx ring map/packets from  vp*/
-					  <16 17 18 19>,        /* MHT-Port3 per-core Tx ring map */
-					  <20 21 22 23>;        /* MHT-Port4 per-core Tx ring map */
+					  <4 5 6 7>,		/* MHT-Port2 per-core Tx ring map/packets from  vp*/
+					  <16 17 18 19>,	/* MHT-Port3 per-core Tx ring map */
+					  <20 21 22 23>;	/* MHT-Port4 per-core Tx ring map */
 			qcom,txdesc-fc-grp-map = <1 2 3 4 5>;	/* Per GMAC flow control group map */
 			qcom,rxfill-map = <4 5 6 7>;		/* Per-core Rx fill ring map */
 			qcom,rxdesc-map = <12 13 14 15>;	/* Per-core Rx desc ring map */
@@ -431,7 +576,7 @@
 			status = "ok";
 		};
 
-		nand@79b0000 {
+		nand: nand@79b0000 {
 			pinctrl-0 = <&qspi_nand_pins>;
 			pinctrl-names = "default";
 			status = "ok";
@@ -447,7 +592,7 @@
 			};
 		};
 
-		hs_m31phy@7b000 {
+		hs_m31phy_0: hs_m31phy@7b000 {
 			status = "ok";
 		};
 
@@ -463,37 +608,139 @@
 			};
 		};
 
-		phy_x2@4b1000 {
-			status = "ok";
-		};
-
 		wsi: wsi {
 			id = <0>;
 			num_chip = <3>;
 		};
 
-		pcie@18000000 {
-			status = "ok";
-			pcie1_rp {
-				reg = <0 0 0 0 0>;
+		q6v5_wcss: remoteproc@d100000 {
+			boot-args = <0x1 0x4 0x3 0x0 0x26 0x2>,
+					<0x1 0x4 0x4 0x2 0x2C 0x0>;
+			memory-region = <&q6_mem_regions>,
+					<&mlo_global_mem0>;
 
-				qcom,mhi@1 {
-					reg = <0 0 0 0 0>;
-					qti,disable-rddm-prealloc;
-					qti,rddm-seg-len = <0x1000>;
-					boot-args = <0x2 0x4 0x34 0x3 0x0 0x0     /* MX Rail, GPIO52, Drive strength 0x3 */
-							0x4 0x4 0x18 0x3 0x0 0x0  /* RFA1p2 Rail, GPIO24, Drive strength 0x3 */
-							0x0 0x4 0x0 0x0 0x0 0x0>; /* End of arguments */
-#if defined(__CNSS2__)
-					qrtr_node_id = <0x31>;
-					memory-region = <0>, <&mhi_region1>;
-#else
-					memory-region = <&qcn9224_pcie1>;
-					qcom,board_id = <0x16>;
-					qcom,wsi = <&wsi>;
-#endif
-				};
+			q6_wcss_pd1: remoteproc_pd1 {
+				memory-region = <&q6_ipq5332_data>,
+						<&m3_dump>,
+						<&q6_etr_region>,
+						<&q6_ipq5332_caldb>,
+						<&mlo_global_mem0>;
+				status = "ok";
 			};
+
+			q6_wcss_pd2: remoteproc_pd2 {
+				iu_firmware = "qcn6432/iu_fw.mdt";
+				memory-region = <&q6_qcn6432_data_1>,
+						<&m3_dump_qcn6432_1>,
+						<&q6_qcn6432_etr_1>,
+						<&q6_qcn6432_caldb_1>,
+						<&mlo_global_mem0>;
+				status = "ok";
+			};
+
+
+			q6_wcss_pd3: remoteproc_pd3 {
+				iu_firmware = "qcn9160/m3_fw.mdt";
+				memory-region = <&q6_qcn9160_data_1>,
+						<&m3_dump_qcn9160_2>,
+						<&q6_qcn9160_etr_1>,
+						<&q6_qcn9160_caldb_1>;
+				status = "ok";
+			};
+
 		};
+
+		/delete-node/ wifi1@f00000;
+
+		wifi1: wifi1@f00000 {
+			qcom,multipd_arch;
+			compatible = "qcom,cnss-qcn6432" , "qcom,qcn6432-wifi";
+			interrupt-bmap = <0x100510>;
+			interrupt-names = "umac_reset";
+			msi-parent = <&v2m0>;
+			qcom,rproc = <&q6_wcss_pd2>;
+			qcom,rproc_rpd = <&q6v5_wcss>;
+			qcom,userpd-subsys-name = "q6v5_wcss_userpd2";
+			qcom,tgt-mem-mode = <0>;
+			qcom,bdf-addr = <0x4E000000 0x4E000000 0x4E000000 0x0 0x0 0x0>;
+			qcom,caldb-addr = <0x4F700000 0x4F700000 0x4F700000 0x0 0x0 0x0>;
+			qcom,caldb-size = <0x500000>;
+			qcom,board_id = <0x0b0>;
+			mem-region = <&q6_qcn6432_data_1>;
+			memory-region = <&q6_qcn6432_data_1>;
+			qcom,pci_slot_id = <0>;
+			qcom,wsi = <&wsi>;
+			interrupts = <0 33 1>;
+			status = "ok";
+		};
+
 	};
+};
+
+&wifi0 {
+	qcom,multipd_arch;
+	qcom,rproc = <&q6_wcss_pd1>;
+	qcom,rproc_rpd = <&q6v5_wcss>;
+	qcom,userpd-subsys-name = "q6v5_wcss_userpd1";
+	qcom,tgt-mem-mode = <0>;
+	qcom,bdf-addr = <0x4C400000 0x4C400000 0x4C400000 0x0 0x0 0x0>;
+	qcom,caldb-addr = <0x4DB00000 0x4DB00000 0x4DB00000 0x0 0x0 0x0>;
+	qcom,caldb-size = <0x500000>;
+	qcom,board_id = <0x13>;
+	mem-region = <&q6_ipq5332_data>;
+	memory-region = <&q6_ipq5332_data>;
+	qcom,wsi = <&wsi>;
+	status = "ok";
+};
+
+&qcn9224_pcie1 {
+	status = "ok";
+};
+
+&mhi_region1 {
+	status = "ok";
+};
+
+&wifi2 {
+	hremote_node = <&qcn9224_pcie1>;
+	/* QCN9224 radio 5G
+	 * +=========+==============+=========+
+	 * |  Region | Start Offset |   Size  |
+	 * +---------+--------------+---------+
+	 * | HREMOTE |  0x52300000  |   28MB  |
+	 * +---------+--------------+---------+
+	 * | M3 Dump |  0x53F00000  |   1MB   |
+	 * +---------+--------------+---------+
+	 * |   ETR   |  0x54000000  |   1MB   |
+	 * +---------+--------------+---------+
+	 * |  Caldb  |  0x54100000  |   8MB   |
+	 * +---------+--------------+---------+
+	 * |Pageable |  0x54900000  |  12MB   |
+	 * +==================================+
+	 */
+	base-addr = <0x52300000>;
+	m3-dump-addr = <0x53F00000>;
+	etr-addr = <0x54000000>;
+	caldb-addr = <0x54100000>;
+	pageable-addr = <0x54900000>;
+	hremote-size = <0x1C00000>;
+	pageable-size = <0xC00000>;
+	tgt-mem-mode = <0x0>;
+	board_id = <0x15>;
+	status = "ok";
+};
+
+&wifi3 {
+	qcom,multipd_arch;
+	qcom,userpd-subsys-name = "q6v5_wcss_userpd3";
+	qcom,rproc = <&q6_wcss_pd3>;
+	qcom,tgt-mem-mode = <0>;
+	qcom,board_id = <0x101>;
+	qcom,bdf-addr = <0x4FC00000 0x4FC00000 0x4FC00000 0x0 0x0 0x0>;
+	qcom,caldb-addr = <0x50C00000 0x50C00000 0x50C00000 0x0 0x0 0x0>;
+	qcom,caldb-size = <0x500000>;
+	m3-dump-addr = <0x50A00000>;
+	mem-region = <&q6_qcn9160_data_1>;
+	qcom,pci_slot_id = <2>;
+	status = "ok";
 };

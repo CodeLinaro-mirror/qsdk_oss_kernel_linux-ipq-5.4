@@ -42,7 +42,7 @@
 #include <linux/prefetch.h>
 #include <linux/if.h>
 
-#define SKB_RECYCLE_SIZE	2304
+#define SKB_RECYCLE_SIZE	CONFIG_SKB_RECYCLE_SIZE
 #define SKB_RECYCLE_MIN_SIZE	SKB_RECYCLE_SIZE
 #define SKB_RECYCLE_MAX_SIZE	SKB_RECYCLE_SIZE
 #define SKB_RECYCLE_MAX_SKBS	1024
@@ -167,11 +167,13 @@ struct sk_buff *skb_recycler_alloc(struct net_device *dev, unsigned int length, 
 bool skb_recycler_consume(struct sk_buff *skb);
 bool skb_recycler_consume_list_fast(struct sk_buff_head *skb_list);
 void skb_recycler_print_all_lists(void);
+void skb_recycler_clear_flags(struct sk_buff *skb);
 #else
 #define skb_recycler_init()  {}
 #define skb_recycler_alloc(dev, len, reset_skb) NULL
 #define skb_recycler_consume(skb) false
 #define skb_recycler_consume_list_fast(skb_list) false
 #define skb_recycler_print_all_lists() false
+#define skb_recycler_clear_flags(skb) {}
 #endif
 #endif

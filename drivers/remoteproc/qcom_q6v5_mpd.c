@@ -175,6 +175,7 @@ struct license_bootargs {
 	u32 size;
 } __packed;
 
+#ifdef CONFIG_IPQ_SUBSYSTEM_RAMDUMP
 static int qcom_get_pd_fw_info(struct q6_wcss *wcss, const struct firmware *fw,
 				struct ramdump_segment *segs, int index,
 				struct qcom_pd_fw_info *fw_info)
@@ -195,7 +196,6 @@ static int qcom_get_pd_fw_info(struct q6_wcss *wcss, const struct firmware *fw,
 	return ret;
 }
 
-#ifdef CONFIG_IPQ_SUBSYSTEM_RAMDUMP
 static void crashdump_init(struct rproc *rproc,
 				struct rproc_dump_segment *segment,
 				void *dest)
@@ -207,34 +207,10 @@ static void crashdump_init(struct rproc *rproc,
 	struct qcom_pd_fw_info fw_info = {0};
 	struct q6_wcss *wcss = rproc->priv;
 	struct device *dev = wcss->dev;
-	struct device_node *node = NULL, *np = dev->of_node, *upd_np;
+	struct device_node *node = NULL, *np = dev->of_node;
 	const struct firmware *fw;
 	char dev_name[BUF_SIZE];
 	u32 temp;
-
-	/*
-	 * Send ramdump notification to userpd(s) if rootpd
-	 * crashed, irrespective of userpd status.
-	 */
-	for_each_available_child_of_node(wcss->dev->of_node, upd_np) {
-		struct device_node *temp;
-		struct platform_device *upd_pdev;
-		struct rproc *upd_rproc;
-
-		if (strstr(upd_np->name, "pd") == NULL)
-			continue;
-		upd_pdev = of_find_device_by_node(upd_np);
-		upd_rproc = platform_get_drvdata(upd_pdev);
-		rproc_subsys_notify(upd_rproc,
-				SUBSYS_RAMDUMP_NOTIFICATION, false);
-
-		for_each_available_child_of_node(upd_np, temp) {
-			upd_pdev = of_find_device_by_node(temp);
-			upd_rproc = platform_get_drvdata(upd_pdev);
-			rproc_subsys_notify(upd_rproc,
-					SUBSYS_RAMDUMP_NOTIFICATION, false);
-		}
-	}
 
 	if (wcss->pd_asid)
 		snprintf(dev_name, BUF_SIZE, "q6v5_wcss_userpd%d_mem",
@@ -316,7 +292,6 @@ static void crashdump_init(struct rproc *rproc,
 			goto free_device;
 		index++;
 	}
-	wcss->state = WCSS_RESTARTING;
 
 	release_firmware(fw);
 	do_elf_ramdump(handle, segs, index);
@@ -336,6 +311,42 @@ static void crashdump_init(struct rproc *rproc,
 {
 }
 #endif
+
+static void q6_coredump(struct rproc *rproc,
+			struct rproc_dump_segment *segment, void *dest)
+{
+	struct q6_wcss *wcss = rproc->priv;
+	struct device_node *upd_np;
+
+	/*
+	 * Send ramdump notification to userpd(s) if rootpd
+	 * crashed, irrespective of userpd status.
+	 */
+	for_each_available_child_of_node(wcss->dev->of_node, upd_np) {
+		struct device_node *temp;
+		struct platform_device *upd_pdev;
+		struct rproc *upd_rproc;
+
+		if (!strstr(upd_np->name, "pd"))
+			continue;
+
+		upd_pdev = of_find_device_by_node(upd_np);
+		upd_rproc = platform_get_drvdata(upd_pdev);
+		rproc_subsys_notify(upd_rproc,
+				    SUBSYS_RAMDUMP_NOTIFICATION, false);
+
+		for_each_available_child_of_node(upd_np, temp) {
+			upd_pdev = of_find_device_by_node(temp);
+			upd_rproc = platform_get_drvdata(upd_pdev);
+			rproc_subsys_notify(upd_rproc,
+					    SUBSYS_RAMDUMP_NOTIFICATION, false);
+		}
+	}
+
+	wcss->state = WCSS_RESTARTING;
+
+	crashdump_init(rproc, segment, dest);
+}
 
 static int handle_upd_in_rpd_crash(void *data)
 {
@@ -358,15 +369,19 @@ static int handle_upd_in_rpd_crash(void *data)
 		upd_pdev = of_find_device_by_node(upd_np);
 		upd_rproc = platform_get_drvdata(upd_pdev);
 
-		if (upd_rproc->state != RPROC_SUSPENDED)
+		mutex_lock(&upd_rproc->lock);
+		if (upd_rproc->state != RPROC_SUSPENDED) {
+			mutex_unlock(&upd_rproc->lock);
 			continue;
+		}
 
 		/* load firmware */
 		ret = request_firmware(&firmware_p, upd_rproc->firmware,
 				&upd_pdev->dev);
 		if (ret < 0) {
-			dev_err(&upd_pdev->dev,
-					"request_firmware failed: %d\n", ret);
+			dev_err(&upd_pdev->dev, "request_firmware failed: %d\n",
+				ret);
+			mutex_unlock(&upd_rproc->lock);
 			continue;
 		}
 
@@ -376,20 +391,25 @@ static int handle_upd_in_rpd_crash(void *data)
 			dev_err(&upd_pdev->dev, "failed to start %s\n",
 					upd_rproc->name);
 		release_firmware(firmware_p);
+		mutex_unlock(&upd_rproc->lock);
 
 		for_each_available_child_of_node(upd_np, temp) {
 			upd_pdev = of_find_device_by_node(temp);
 			upd_rproc = platform_get_drvdata(upd_pdev);
 
-			if (upd_rproc->state != RPROC_SUSPENDED)
+			mutex_lock(&upd_rproc->lock);
+			if (upd_rproc->state != RPROC_SUSPENDED) {
+				mutex_unlock(&upd_rproc->lock);
 				continue;
+			}
 
 			/* load firmware */
 			ret = request_firmware(&firmware_p, upd_rproc->firmware,
 					&upd_pdev->dev);
 			if (ret < 0) {
-				dev_err(&upd_pdev->dev,
-					"request_firmware failed: %d\n", ret);
+				dev_err(&upd_pdev->dev, "request_firmware failed: %d\n",
+					ret);
+				mutex_unlock(&upd_rproc->lock);
 				continue;
 			}
 
@@ -399,6 +419,7 @@ static int handle_upd_in_rpd_crash(void *data)
 				dev_err(&upd_pdev->dev, "failed to start %s\n",
 						upd_rproc->name);
 			release_firmware(firmware_p);
+			mutex_unlock(&upd_rproc->lock);
 		}
 	}
 	rpd_wcss->state = WCSS_NORMAL;
@@ -436,11 +457,11 @@ static int q6_wcss_start(struct rproc *rproc)
 
 wait_for_reset:
 	ret = qcom_q6v5_wait_for_start(&wcss->q6, msecs_to_jiffies(10000));
-	if (ret == -ETIMEDOUT) {
-		if (debug_wcss)
+	if (ret) {
+		if (debug_wcss && ret == -ETIMEDOUT)
 			goto wait_for_reset;
 		else
-			dev_err(wcss->dev, "start timed out\n");
+			dev_err(wcss->dev, "start failed ret: %d\n", ret);
 	}
 
 	/* start userpd's, if root pd getting recovered*/
@@ -487,16 +508,21 @@ static int q6_wcss_spawn_pd(struct rproc *rproc)
 {
 	int ret;
 	struct q6_wcss *wcss = rproc->priv;
+	struct qcom_q6v5 *q6v5 = &wcss->q6;
+
+	reinit_completion(&q6v5->start_done);
+	reinit_completion(&q6v5->stop_done);
+	reinit_completion(&q6v5->spawn_done);
 
 	ret = qcom_q6v5_request_spawn(&wcss->q6);
-	if (ret == -ETIMEDOUT) {
-		pr_err("%s spawn timedout\n", rproc->name);
+	if (ret) {
+		dev_err(wcss->dev, "Spawn failed, ret = %d\n", ret);
 		return ret;
 	}
 
 	ret = qcom_q6v5_wait_for_start(&wcss->q6, msecs_to_jiffies(10000));
-	if (ret == -ETIMEDOUT) {
-		pr_err("%s start timedout\n", rproc->name);
+	if (ret) {
+		dev_err(wcss->dev, "Start failed, ret = %d\n", ret);
 		wcss->q6.running = false;
 		return ret;
 	}
@@ -654,12 +680,22 @@ static int q6_wcss_stop(struct rproc *rproc)
 				continue;
 			upd_pdev = of_find_device_by_node(upd_np);
 			upd_rproc = platform_get_drvdata(upd_pdev);
+			upd_wcss = upd_rproc->priv;
+			complete(&upd_wcss->q6.spawn_done);
+			complete(&upd_wcss->q6.start_done);
+			complete(&upd_wcss->q6.stop_done);
+
 			rproc_subsys_notify(upd_rproc,
 				SUBSYS_PREPARE_FOR_FATAL_SHUTDOWN, true);
 
 			for_each_available_child_of_node(upd_np, temp) {
 				upd_pdev = of_find_device_by_node(temp);
 				upd_rproc = platform_get_drvdata(upd_pdev);
+				upd_wcss = upd_rproc->priv;
+				complete(&upd_wcss->q6.spawn_done);
+				complete(&upd_wcss->q6.start_done);
+				complete(&upd_wcss->q6.stop_done);
+
 				rproc_subsys_notify(upd_rproc,
 					SUBSYS_PREPARE_FOR_FATAL_SHUTDOWN, true);
 			}
@@ -672,8 +708,11 @@ static int q6_wcss_stop(struct rproc *rproc)
 			upd_rproc = platform_get_drvdata(upd_pdev);
 			upd_wcss = upd_rproc->priv;
 
-			if (upd_rproc->state == RPROC_OFFLINE)
+			mutex_lock(&upd_rproc->lock);
+			if (upd_rproc->state == RPROC_OFFLINE) {
+				mutex_unlock(&upd_rproc->lock);
 				continue;
+			}
 
 			upd_rproc->state = RPROC_CRASHED;
 
@@ -683,14 +722,18 @@ static int q6_wcss_stop(struct rproc *rproc)
 				dev_err(&upd_pdev->dev, "failed to stop %s\n",
 							upd_rproc->name);
 			upd_rproc->state = RPROC_SUSPENDED;
+			mutex_unlock(&upd_rproc->lock);
 
 			for_each_available_child_of_node(upd_np, temp) {
 				upd_pdev = of_find_device_by_node(temp);
 				upd_rproc = platform_get_drvdata(upd_pdev);
 				upd_wcss = upd_rproc->priv;
 
-				if (upd_rproc->state == RPROC_OFFLINE)
+				mutex_lock(&upd_rproc->lock);
+				if (upd_rproc->state == RPROC_OFFLINE) {
+					mutex_unlock(&upd_rproc->lock);
 					continue;
+				}
 
 				upd_rproc->state = RPROC_CRASHED;
 
@@ -701,6 +744,7 @@ static int q6_wcss_stop(struct rproc *rproc)
 							upd_rproc->name);
 
 				upd_rproc->state = RPROC_SUSPENDED;
+				mutex_unlock(&upd_rproc->lock);
 			}
 		}
 	}
@@ -722,8 +766,8 @@ static int q6_wcss_stop(struct rproc *rproc)
 
 	if (wcss->requires_force_stop) {
 		ret = qcom_q6v5_request_stop(&wcss->q6);
-		if (ret == -ETIMEDOUT) {
-			dev_err(wcss->dev, "timed out on wait\n");
+		if (ret) {
+			dev_err(wcss->dev, "Stop failed, ret: %d\n", ret);
 			return ret;
 		}
 	}
@@ -746,7 +790,7 @@ static int wcss_ipq5332_pcie_pd_stop(struct rproc *rproc)
 	if (rproc->state != RPROC_CRASHED) {
 		ret = qcom_q6v5_request_stop(&wcss->q6);
 		if (ret) {
-			dev_err(&rproc->dev, "ahb pd not stopped\n");
+			dev_err(&rproc->dev, "ahb pd not stopped, ret: %d\n", ret);
 			return ret;
 		}
 	}
@@ -777,7 +821,7 @@ static int wcss_pcie_pd_stop(struct rproc *rproc)
 	if (rproc->state != RPROC_CRASHED) {
 		ret = qcom_q6v5_request_stop(&wcss->q6);
 		if (ret) {
-			dev_err(&rproc->dev, "ahb pd not stopped\n");
+			dev_err(&rproc->dev, "ahb pd not stopped, ret: %d\n", ret);
 			return ret;
 		}
 	}
@@ -840,7 +884,7 @@ static int wcss_ipq5332_ahb_pd_stop(struct rproc *rproc)
 	if (rproc->state != RPROC_CRASHED && wcss->q6.stop_bit && q6_offload) {
 		ret = qcom_q6v5_request_stop(&wcss->q6);
 		if (ret) {
-			dev_err(&rproc->dev, "ahb pd not stopped\n");
+			dev_err(&rproc->dev, "ahb pd not stopped, ret: %d\n", ret);
 			return ret;
 		}
 	}
@@ -878,7 +922,7 @@ static int wcss_ahb_pd_stop(struct rproc *rproc)
 	if (rproc->state != RPROC_CRASHED && wcss->q6.stop_bit) {
 		ret = qcom_q6v5_request_stop(&wcss->q6);
 		if (ret) {
-			dev_err(&rproc->dev, "ahb pd not stopped\n");
+			dev_err(&rproc->dev, "ahb pd not stopped, ret: %d\n", ret);
 			return ret;
 		}
 	}
@@ -1364,7 +1408,7 @@ int q6_wcss_register_dump_segments(struct rproc *rproc,
 	 * Registering custom coredump function with a dummy dump segment
 	 * as the dump regions are taken care by the dump function itself
 	 */
-	return rproc_coredump_add_custom_segment(rproc, 0, 0, crashdump_init,
+	return rproc_coredump_add_custom_segment(rproc, 0, 0, q6_coredump,
 									NULL);
 }
 
