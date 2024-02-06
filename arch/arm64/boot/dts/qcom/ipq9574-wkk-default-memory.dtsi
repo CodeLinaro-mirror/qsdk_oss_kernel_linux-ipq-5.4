@@ -204,6 +204,10 @@
 			status = "disabled";
                 };
 
+		minidump_mem: minidump_mem@0 {
+			no-map;
+		};
+
 		mhi_region0: dma_pool0@0 {
 			compatible = "shared-dma-pool";
 			no-map;

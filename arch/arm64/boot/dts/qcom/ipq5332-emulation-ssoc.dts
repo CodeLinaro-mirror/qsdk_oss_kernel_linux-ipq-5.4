@@ -168,6 +168,9 @@
 			reg = <0x0 0x50300000 0x0 0x500000>;
 		};
 
+		minidump_mem: minidump_mem@0 {
+			no-map;
+		};
         };
 
 	clocks {
