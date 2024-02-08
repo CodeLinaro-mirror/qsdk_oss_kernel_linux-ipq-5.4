@@ -24,11 +24,19 @@ static inline int should_deliver(const struct net_bridge_port *p,
 	struct net_bridge_vlan_group *vg;
 
 	vg = nbp_vlan_group_rcu(p);
-	return (((p->flags & BR_HAIRPIN_MODE) && !is_multicast_ether_addr(eth_hdr(skb)->h_dest))
-		|| (skb->dev != p->dev)) &&
+	if  (((p->flags & BR_HAIRPIN_MODE) || (skb->dev != p->dev)) &&
 		br_allowed_egress(vg, skb) && (p->state == BR_STATE_FORWARDING) &&
 		nbp_switchdev_allowed_egress(p, skb) &&
-		!br_skb_isolated(p, skb);
+		!br_skb_isolated(p, skb)) {
+		if (!is_multicast_ether_addr(eth_hdr(skb)->h_dest)) {
+			return true;
+		}
+
+		if (skb->dev->ieee80211_ptr) {
+			return true;
+		}
+	}
+	return false;
 }
 
 int br_dev_queue_push_xmit(struct net *net, struct sock *sk, struct sk_buff *skb)
