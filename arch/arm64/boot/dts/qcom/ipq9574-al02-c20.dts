@@ -786,6 +786,7 @@
 	hremote_node = <&qcn9224_pcie0>;
 	board_id = <0x01>;
 	interrupt-bmap = <0x080512>;
+	hw_link_id = <0 0>;
 	status = "ok";
 };
 
@@ -793,6 +794,7 @@
 	hremote_node = <&qcn9224_pcie1>;
 	board_id = <0x011>;
 	interrupt-bmap = <0x080512>;
+	hw_link_id = <3 0>;
 	status = "ok";
 };
 
@@ -800,6 +802,7 @@
 	hremote_node = <&qcn9224_pcie2>;
 	board_id = <0x04>;
 	interrupt-bmap = <0x080512>;
+	hw_link_id = <2 0>;
 	status = "ok";
 };
 
@@ -807,5 +810,6 @@
 	hremote_node = <&qcn9224_pcie3>;
 	board_id = <0x12>;
 	interrupt-bmap = <0x080512>;
+	hw_link_id = <1 0>;
 	status = "ok";
 };
