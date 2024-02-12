@@ -139,7 +139,7 @@
 			reg = <0x0 0x4F700000 0x0 0x500000>;
 		};
 
-		q6_qcn9160_data_1: q6_qcn9160_data_1@4FC00000 {
+		q6_qcn9160_data_2: q6_qcn9160_data_2@4FC00000 {
 			no-map;
 			reg = <0x0 0x4FC00000 0x0 0xe00000>;
 		};
@@ -149,12 +149,12 @@
 			reg = <0x0 0x50A00000 0x0 0x100000>;
 		};
 
-		q6_qcn9160_etr_1: q6_qcn9160_etr_1@50B00000 {
+		q6_qcn9160_etr_2: q6_qcn9160_etr_2@50B00000 {
 			no-map;
 			reg = <0x0 0x50B00000 0x0 0x100000>;
 		};
 
-		q6_qcn9160_caldb_1: q6_qcn9160_caldb_1@50C00000 {
+		q6_qcn9160_caldb_2: q6_qcn9160_caldb_2@50C00000 {
 			no-map;
 			reg = <0x0 0x50C00000 0x0 0x500000>;
 		};
@@ -641,10 +641,10 @@
 
 			q6_wcss_pd3: remoteproc_pd3 {
 				iu_firmware = "qcn9160/m3_fw.mdt";
-				memory-region = <&q6_qcn9160_data_1>,
+				memory-region = <&q6_qcn9160_data_2>,
 						<&m3_dump_qcn9160_2>,
-						<&q6_qcn9160_etr_1>,
-						<&q6_qcn9160_caldb_1>;
+						<&q6_qcn9160_etr_2>,
+						<&q6_qcn9160_caldb_2>;
 				status = "ok";
 			};
 
@@ -740,7 +740,7 @@
 	qcom,caldb-addr = <0x50C00000 0x50C00000 0x50C00000 0x0 0x0 0x0>;
 	qcom,caldb-size = <0x500000>;
 	m3-dump-addr = <0x50A00000>;
-	mem-region = <&q6_qcn9160_data_1>;
+	mem-region = <&q6_qcn9160_data_2>;
 	qcom,pci_slot_id = <2>;
 	status = "ok";
 };
