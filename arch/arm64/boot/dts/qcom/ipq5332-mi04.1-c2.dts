@@ -255,6 +255,7 @@
 			pinctrl-0 = <&spi_0_pins>;
 			pinctrl-names = "default";
 			cs-select = <0>;
+			spi-transfer-timeout = <500>;
 			status = "ok";
 
 			m25p80@0 {
@@ -500,6 +501,64 @@
 			boot-args = <0x1 0x4 0x3 0x1 0x2f 0x2>;
 			memory-region = <&q6_mem_regions>,
 					<&mlo_global_mem0>;
+
+#ifdef __IPQ_MEM_PROFILE_16_MB__
+			/delete-node/ remoteproc_pd1;
+			/delete-node/ remoteproc_pd2;
+
+			q6_wcss_text_pd3: remoteproc_text_pd3 {
+				compatible = "qcom,ipq5332-mpd-upd-text";
+				firmware = "IPQ5332/q6_fw3.mdt";
+
+				q6_wcss_pd1: remoteproc_pd1 {
+					compatible = "qcom,ipq5332-wcss-ahb-mpd";
+					firmware = "IPQ5332/q6_fw1.mdt";
+					iu_firmware = "IPQ5332/iu_fw.mdt";
+					interrupts-extended = <&wcss_smp2p_in 8 0>,
+							<&wcss_smp2p_in 9 0>,
+							<&wcss_smp2p_in 12 0>,
+							<&wcss_smp2p_in 11 0>;
+					interrupt-names = "fatal",
+							"ready",
+							"spawn-ack",
+							"stop-ack";
+					qcom,smem-states = <&wcss_smp2p_out 8>,
+							<&wcss_smp2p_out 9>,
+							<&wcss_smp2p_out 10>;
+					qcom,smem-state-names = "shutdown",
+								"stop",
+								"spawn";
+					memory-region = <&q6_ipq5332_data>, <&m3_dump>,
+							<&q6_etr_region>, <&mlo_global_mem0>;
+					qcom,offloaded_to_q6;
+					status = "ok";
+				};
+
+				q6_wcss_pd2: remoteproc_pd2 {
+					compatible = "qcom,ipq5332-wcss-pcie-mpd";
+					firmware = "IPQ5332/q6_fw2.mdt";
+					iu_firmware = "qcn6432/iu_fw.mdt";
+					interrupts-extended = <&wcss_smp2p_in 16 0>,
+							<&wcss_smp2p_in 17 0>,
+							<&wcss_smp2p_in 20 0>,
+							<&wcss_smp2p_in 19 0>;
+					interrupt-names = "fatal",
+							"ready",
+							"spawn-ack",
+							"stop-ack";
+					qcom,smem-states = <&wcss_smp2p_out 16>,
+							<&wcss_smp2p_out 17>,
+							<&wcss_smp2p_out 18>;
+					qcom,smem-state-names = "shutdown",
+								"stop",
+								"spawn";
+					memory-region = <&q6_qcn6432_data_1>, <&m3_dump_qcn6432_1>,
+							<&q6_qcn6432_etr_1>, <&mlo_global_mem0>;
+					status = "ok";
+				};
+			};
+#else
+
 		q6_wcss_pd1: remoteproc_pd1 {
 			memory-region = <&q6_ipq5332_data>, <&m3_dump>,
 					<&q6_etr_region>, <&mlo_global_mem0>;
@@ -512,6 +571,7 @@
 					<&q6_qcn6432_etr_1>, <&mlo_global_mem0>;
 			status = "ok";
 		};
+#endif
 
 			/delete-node/ remoteproc_pd3;
 		};
