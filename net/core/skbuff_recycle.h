@@ -158,6 +158,9 @@ static inline bool consume_skb_can_recycle(const struct sk_buff *skb,
 	if (unlikely(skb_pfmemalloc(skb)))
 		return false;
 
+	if (skb->active_extensions)
+		return false;
+
 	return true;
 }
 
