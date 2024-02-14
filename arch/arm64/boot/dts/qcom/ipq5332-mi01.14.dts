@@ -622,6 +622,7 @@
 			memory-region = <&q6_qcn6432_data_1>;
 			qcom,wsi = <&wsi>;
 			qcom,pci_slot_id = <0>;
+			hw_link_id = <1 0>;
 			status = "ok";
 		};
 
@@ -641,6 +642,7 @@
 	mem-region = <&q6_ipq5332_data>;
 	memory-region = <&q6_ipq5332_data>;
 	qcom,wsi = <&wsi>;
+	hw_link_id = <0 0>;
 	status = "ok";
 };
 
@@ -678,5 +680,6 @@
 	pageable-size = <0xC00000>;
 	tgt-mem-mode = <0x0>;
 	board_id = <0x16>;
+	hw_link_id = <2 0>;
 	status = "ok";
 };
