@@ -102,7 +102,7 @@ static void diag_stm_update_work_fn(struct work_struct *work)
 void diag_notify_md_client(uint8_t proc, uint8_t peripheral, int data)
 {
 	int stat = 0;
-	struct siginfo info;
+	struct kernel_siginfo info;
 	struct pid *pid_struct;
 	struct task_struct *result;
 
@@ -113,7 +113,7 @@ void diag_notify_md_client(uint8_t proc, uint8_t peripheral, int data)
 		return;
 
 	mutex_lock(&driver->md_session_lock);
-	memset(&info, 0, sizeof(struct siginfo));
+	memset(&info, 0, sizeof(struct kernel_siginfo));
 	info.si_code = SI_QUEUE;
 	info.si_int = (DIAG_GET_MD_DEVICE_SIG_MASK(proc) | data);
 	if (proc == DIAG_LOCAL_PROC)
@@ -1059,6 +1059,7 @@ static int diag_compute_real_time(int idx)
 		 * connection.
 		 */
 		real_time = MODE_REALTIME;
+#ifdef CONFIG_DIAG_OVER_USB
 	} else if (driver->usb_connected) {
 		/*
 		 * If USB is connected, check individual process. If Memory
@@ -1070,6 +1071,7 @@ static int diag_compute_real_time(int idx)
 			real_time = MODE_NONREALTIME;
 		else
 			real_time = MODE_REALTIME;
+#endif
 	} else {
 		/*
 		 * We come here if USB is not connected and the active

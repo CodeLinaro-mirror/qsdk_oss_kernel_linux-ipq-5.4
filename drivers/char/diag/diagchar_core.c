@@ -30,7 +30,9 @@
 #include "diag_debugfs.h"
 #include "diag_masks.h"
 #include "diagfwd_bridge.h"
+#ifdef CONFIG_DIAG_OVER_USB
 #include "diag_usb.h"
+#endif
 #include "diag_memorydevice.h"
 #include "diag_mux.h"
 #include "diag_ipc_logging.h"
@@ -643,19 +645,6 @@ void diag_record_stats(int type, int flag)
 				   __func__, flag);
 		return;
 	}
-}
-
-void diag_get_timestamp(char *time_str)
-{
-	struct timeval t;
-	struct tm broken_tm;
-
-	do_gettimeofday(&t);
-	if (!time_str)
-		return;
-	time_to_tm(t.tv_sec, 0, &broken_tm);
-	scnprintf(time_str, DIAG_TS_SIZE, "%d:%d:%d:%ld", broken_tm.tm_hour,
-				broken_tm.tm_min, broken_tm.tm_sec, t.tv_usec);
 }
 
 int diag_get_remote(int remote_info)
@@ -3603,7 +3592,9 @@ static int diag_user_process_apps_data(const char __user *buf, int len,
 				       int pkt_type)
 {
 	int ret = 0;
+#ifdef CONFIG_CORESIGHT_5_4
 	int stm_size = 0;
+#endif
 	const int mempool = POOL_TYPE_COPY;
 	unsigned char *user_space_data = NULL;
 	uint8_t hdlc_disabled;
@@ -3645,12 +3636,14 @@ static int diag_user_process_apps_data(const char __user *buf, int len,
 
 	if (driver->stm_state[APPS_DATA] &&
 	    (pkt_type >= DATA_TYPE_EVENT) && (pkt_type <= DATA_TYPE_LOG)) {
+#ifdef CONFIG_CORESIGHT_5_4
 		stm_size = stm_log_inv_ts(OST_ENTITY_DIAG, 0, user_space_data,
 					  len);
 		if (stm_size == 0) {
 			pr_debug("diag: In %s, stm_log_inv_ts returned size of 0\n",
 				 __func__);
 		}
+#endif
 		diagmem_free(driver, user_space_data, mempool);
 		user_space_data = NULL;
 
@@ -4109,6 +4102,7 @@ static ssize_t diagchar_write(struct file *file, const char __user *buf,
 	else
 		token = 0;
 
+#ifdef  DIAG_OVER_USB
 	if (driver->logging_mode[token] == DIAG_USB_MODE &&
 		!driver->usb_connected) {
 		if (!((pkt_type == DCI_DATA_TYPE) ||
@@ -4120,6 +4114,7 @@ static ssize_t diagchar_write(struct file *file, const char __user *buf,
 			return -EIO;
 		}
 	}
+#endif
 
 	payload_buf = buf + sizeof(int);
 	payload_len = count - sizeof(int);
@@ -4148,10 +4143,12 @@ static ssize_t diagchar_write(struct file *file, const char __user *buf,
 		 * stream. If USB is not connected and we are not in memory
 		 * device mode, we should not process these logs/events.
 		 */
+#ifdef  DIAG_OVER_USB
 		if (pkt_type && driver->logging_mode[DIAG_LOCAL_PROC] ==
 			DIAG_USB_MODE &&
 		    !driver->usb_connected)
 			return err;
+#endif
 	}
 
 	switch (pkt_type) {
@@ -4430,7 +4427,7 @@ static int diagchar_setup_cdev(dev_t devno)
 	if (!driver->diag_dev)
 		return -EIO;
 
-	driver->diag_dev->power.wakeup = wakeup_source_register("DIAG_WS");
+	driver->diag_dev->power.wakeup = wakeup_source_register(driver->diag_dev, "DIAG_WS");
 	return 0;
 
 }
