@@ -3749,3 +3749,4 @@
 #include "ipq9574-coresight.dtsi"
 #include "ipq9574-thermal.dtsi"
 #include "ipq9574-cpr-regulator.dtsi"
+#include "ipq9574-noc.dtsi"
