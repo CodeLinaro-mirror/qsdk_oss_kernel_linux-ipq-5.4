@@ -69,9 +69,13 @@
 #define QSEE_64				64
 #define QSEE_32				32
 #define AES_BLOCK_SIZE			16
-#define MAX_CONTEXT_BUFFER_LEN		64
+#define MAX_CONTEXT_BUFFER_LEN_V1	64
+#define MAX_CONTEXT_BUFFER_LEN_V2	128
 #define MAX_KEY_HANDLE_SIZE		8
 
+#define QCOM_SCM_SVC_INFO       0x06
+#define QCOM_SCM_IS_FEATURE_AVAIL   0x03
+#define QCOM_SCM_SW_CONTEXT_FEATURE_ID	0x5
 #define MAX_ENCRYPTED_DATA_SIZE  (2072 * sizeof(uint8_t))
 #define MAX_PLAIN_DATA_SIZE	 (2048 * sizeof(uint8_t))
 #define MAX_RSA_PLAIN_DATA_SIZE  (8192 * sizeof(uint8_t))
@@ -155,19 +159,34 @@ struct qti_storage_service_hwkey_policy {
 	uint32_t destination;
 };
 
-struct qti_storage_service_hwkey_bindings {
+struct qti_storage_service_hwkey_bindings_v1 {
 	uint32_t bindings;
 	uint32_t context_len;
-	uint8_t context[MAX_CONTEXT_BUFFER_LEN];
+	uint8_t context[MAX_CONTEXT_BUFFER_LEN_V1];
 };
 
-struct qti_storage_service_derive_key_cmd_t {
+struct qti_storage_service_hwkey_bindings_v2 {
+	uint32_t bindings;
+	uint32_t context_len;
+	uint8_t context[MAX_CONTEXT_BUFFER_LEN_V2];
+};
+
+struct qti_storage_service_derive_key_cmd_t_v1 {
 	struct qti_storage_service_hwkey_policy policy;
-	struct qti_storage_service_hwkey_bindings hw_key_bindings;
+	struct qti_storage_service_hwkey_bindings_v1 hw_key_bindings;
 	uint32_t source;
 	uint64_t mixing_key;
 	uint64_t key;
 };
+
+struct qti_storage_service_derive_key_cmd_t_v2 {
+	struct qti_storage_service_hwkey_policy policy;
+	struct qti_storage_service_hwkey_bindings_v2 hw_key_bindings;
+	uint32_t source;
+	uint64_t mixing_key;
+	uint64_t key;
+};
+
 struct qti_storage_service_key_blob_t {
 	uint64_t key_material;
 	uint32_t key_material_len;
@@ -444,7 +463,7 @@ static uint64_t aes_encrypted_len;
 static uint8_t *aes_unsealed_buf;
 static uint64_t aes_decrypted_len;
 static uint8_t *aes_ivdata;
-static uint8_t aes_context_data[MAX_CONTEXT_BUFFER_LEN];
+static uint8_t aes_context_data[MAX_CONTEXT_BUFFER_LEN_V1];
 static dma_addr_t __aligned(sizeof(dma_addr_t) * 8) aes_source_data;
 static dma_addr_t __aligned(sizeof(dma_addr_t) * 8) aes_bindings_data;
 static uint64_t aes_ivdata_len;
@@ -487,7 +506,7 @@ static size_t unseal_len;
 static uint64_t encrypted_len;
 static uint64_t decrypted_len;
 static uint8_t *ivdata;
-static uint8_t context_data[MAX_CONTEXT_BUFFER_LEN];
+static uint8_t context_data[MAX_CONTEXT_BUFFER_LEN_V2];
 static dma_addr_t __aligned(sizeof(dma_addr_t) * 8) source_data;
 static dma_addr_t __aligned(sizeof(dma_addr_t) * 8) bindings_data;
 static uint64_t type;
@@ -574,6 +593,7 @@ static struct device *qdev;
  */
 static uint8_t encrypt_text[MAX_INPUT_SIZE];
 static uint8_t decrypt_text[MAX_INPUT_SIZE];
+static uint32_t max_context_len;
 
 #define MUL		0x1
 #define ENC		0x2
