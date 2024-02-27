@@ -1,6 +1,13 @@
-// SPDX-License-Identifier: GPL-2.0-only
-/* Copyright (c) 2015-2019, 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022, 2024 Qualcomm Innovation Center, Inc. All rights reserved.
+/* Copyright (c) 2015-2019, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
  */
 #include <linux/slab.h>
 #include <linux/err.h>
@@ -179,8 +186,8 @@ static int diag_add_hdlc_encoding(unsigned char *dest_buf, int *dest_len,
 
 static int check_bufsize_for_encoding(struct diagfwd_buf_t *buf, uint32_t len)
 {
-	int i, ctx = 0, flag_64k = 0;
-	uint32_t max_size = 0, realloc_len = 0;
+	int i, ctx = 0;
+	uint32_t max_size = 0;
 	unsigned long flags;
 	unsigned char *temp_buf = NULL;
 	struct diag_md_info *ch = NULL;
@@ -190,11 +197,10 @@ static int check_bufsize_for_encoding(struct diagfwd_buf_t *buf, uint32_t len)
 
 	max_size = (2 * len) + 3;
 	if (max_size > PERIPHERAL_BUF_SZ) {
-		if (max_size > MAX_PERIPHERAL_BUF_SZ) {
-			pr_err("diag: In %s, max_size (%d) is going beyond 32k\n",
+		if (max_size > MAX_PERIPHERAL_HDLC_BUF_SZ) {
+			pr_err("diag: In %s, max_size is going beyond limit %d\n",
 			       __func__, max_size);
 			max_size = MAX_PERIPHERAL_HDLC_BUF_SZ;
-			flag_64k = 1;
 		}
 
 		mutex_lock(&driver->md_session_lock);
@@ -224,26 +230,18 @@ static int check_bufsize_for_encoding(struct diagfwd_buf_t *buf, uint32_t len)
 				}
 				spin_unlock_irqrestore(&ch->lock, flags);
 			}
-
-			if (flag_64k)
-				realloc_len = MAX_PERIPHERAL_HDLC_BUF_SZ;
-			else
-				realloc_len = MAX_PERIPHERAL_BUF_SZ;
-
-			temp_buf = krealloc(buf->data, realloc_len,
+			temp_buf = krealloc(buf->data, max_size +
+						APF_DIAG_PADDING,
 					    GFP_KERNEL);
 			if (!temp_buf) {
 				mutex_unlock(&driver->md_session_lock);
 				return -ENOMEM;
 			}
-			buf->data = temp_buf;
-			buf->len = realloc_len;
 			DIAG_LOG(DIAG_DEBUG_PERIPHERALS,
-			"diag: Reallocated data buffer: %pK with size: %d, max_buf_len: %d, p: %d, t: %d, n: %d\n",
-			temp_buf, max_size, buf->len,
-			GET_BUF_PERIPHERAL(buf->ctxt),
-			GET_BUF_TYPE(buf->ctxt),
-			GET_BUF_NUM(buf->ctxt));
+			"Reallocated data buffer: %pK with size: %d\n",
+			temp_buf, max_size);
+			buf->data = temp_buf;
+			buf->len = max_size;
 		}
 		mutex_unlock(&driver->md_session_lock);
 	}
@@ -1239,7 +1237,8 @@ static void __diag_fwd_open(struct diagfwd_info *fwd_info)
 	 * Keeping the buffers busy for Memory Device and Multi Mode.
 	 */
 
-	if (driver->logging_mode[DIAG_LOCAL_PROC] != DIAG_USB_MODE) {
+	if (driver->logging_mode[DIAG_LOCAL_PROC] != DIAG_USB_MODE &&
+		driver->logging_mode[DIAG_LOCAL_PROC] != DIAG_PCIE_MODE) {
 		if (fwd_info->buf_1) {
 			atomic_set(&fwd_info->buf_1->in_busy, 0);
 			fwd_info->buffer_status[BUF_1_INDEX] = 0;
@@ -1355,26 +1354,11 @@ int diagfwd_channel_open(struct diagfwd_info *fwd_info)
 
 int diagfwd_channel_close(struct diagfwd_info *fwd_info)
 {
-	struct diag_rpmsg_info *rpmsg_info = NULL;
-	struct diag_socket_info *socket_info = NULL;
-
 	if (!fwd_info)
 		return -EIO;
 
 	mutex_lock(&driver->diagfwd_channel_mutex[fwd_info->peripheral]);
 	fwd_info->ch_open = 0;
-	rpmsg_info = diag_get_rpmsg_info_ptr(fwd_info->type,
-						fwd_info->peripheral);
-	socket_info = diag_get_socket_info_ptr(fwd_info->type,
-						fwd_info->peripheral);
-
-	if (rpmsg_info && socket_info && rpmsg_info->probed
-					&& socket_info->reset_flag) {
-		mutex_unlock(
-			&driver->diagfwd_channel_mutex[fwd_info->peripheral]);
-		return 0;
-	}
-
 	if (fwd_info && fwd_info->c_ops && fwd_info->c_ops->close)
 		fwd_info->c_ops->close(fwd_info);
 
@@ -1465,7 +1449,6 @@ void diagfwd_write_done(uint8_t peripheral, uint8_t type, int buf_num)
 			DIAG_LOG(DIAG_DEBUG_PERIPHERALS,
 			"Buffer 1 for core PD is marked free, p: %d, t: %d, buf_num: %d\n",
 				fwd_info->peripheral, fwd_info->type, buf_num);
-			rpmsg_mark_buffers_free(peripheral, type, buf_num);
 		}
 	} else if (buf_num == 2 && fwd_info->buf_2) {
 		/*
@@ -1492,7 +1475,6 @@ void diagfwd_write_done(uint8_t peripheral, uint8_t type, int buf_num)
 			DIAG_LOG(DIAG_DEBUG_PERIPHERALS,
 			"Buffer 2 for core PD is marked free, p: %d, t: %d, buf_num: %d\n",
 				fwd_info->peripheral, fwd_info->type, buf_num);
-			rpmsg_mark_buffers_free(peripheral, type, buf_num);
 		}
 	} else if (buf_num >= 3 && (buf_num % 2)) {
 		/*
@@ -1528,7 +1510,6 @@ void diagfwd_write_done(uint8_t peripheral, uint8_t type, int buf_num)
 			DIAG_LOG(DIAG_DEBUG_PERIPHERALS,
 				"Buffer 1 for core PD is marked free, p: %d, t: %d, buf_num: %d\n",
 				fwd_info->peripheral, fwd_info->type, buf_num);
-			rpmsg_mark_buffers_free(peripheral, type, 1);
 		}
 	} else if (buf_num >= 4 && !(buf_num % 2)) {
 		/*
@@ -1564,8 +1545,7 @@ void diagfwd_write_done(uint8_t peripheral, uint8_t type, int buf_num)
 			DIAG_LOG(DIAG_DEBUG_PERIPHERALS,
 			"Buffer 2 for core PD is marked free, p: %d, t: %d, buf_num: %d\n",
 			fwd_info->peripheral, fwd_info->type, buf_num);
-			rpmsg_mark_buffers_free(peripheral, type, 2);
-		}
+			}
 	} else
 		pr_err("diag: In %s, invalid buf_num %d\n", __func__, buf_num);
 
