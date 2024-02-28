@@ -758,6 +758,15 @@ int qti_scm_get_ecdsa_blob(u32 svc_id, u32 cmd_id, dma_addr_t nonce_buf,
 }
 EXPORT_SYMBOL(qti_scm_get_ecdsa_blob);
 
+long qti_scm_is_feature_available(u32 svc_id, u32 cmd_id, u32 feature_id)
+{
+	int ret;
+	ret = __qti_scm_is_feature_available(__scm->dev, svc_id, cmd_id,
+							feature_id);
+	return ret;
+}
+EXPORT_SYMBOL(qti_scm_is_feature_available);
+
 int qti_scm_get_device_attestation_ephimeral_key(u32 svc_id, u32 cmd_id,
 			void *key_buf, u32 key_buf_len, u32 *key_len)
 {
