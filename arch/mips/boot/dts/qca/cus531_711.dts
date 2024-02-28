@@ -1,0 +1,160 @@
+// SPDX-License-Identifier: ISC
+// Copyright (c) 2022,2024, Qualcomm Innovation Center, Inc. All rights reserved.
+
+/dts-v1/;
+
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/input/input.h>
+#include <dt-bindings/clock/ath79-clk.h>
+#include <dt-bindings/interrupt-controller/irq.h>
+
+#include "qca4531.dtsi"
+
+/ {
+	compatible = "qca,cus531_711", "qca,ath79";
+	model = "CUS531_711 nand reference board";
+
+	i2c {
+		compatible = "i2c-gpio";
+		gpios = <&gpio 17 GPIO_ACTIVE_HIGH /* sda */
+			 &gpio 16 GPIO_ACTIVE_HIGH /* scl */
+			>;
+	};
+};
+
+
+&usb0 {
+	status = "okay";
+};
+
+&usb_phy {
+	status = "okay";
+};
+
+&pinmux {
+	// gpio 14 as spi cs2
+	spi_cs2_pins: pinmux_spi_cs2_pins {
+		pinctrl-single,bits = <0x0c 0x0b0000 0xff0000>;
+	};
+};
+
+&spi {
+	status = "okay";
+	spi-bus-num = /bits/ 16 <0>;
+	spi-chipselect = /bits/ 16 <3>;
+
+	flash@0 {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		compatible = "jedec,spi-nor";
+		reg = <0>;
+		spi-max-frequency = <25000000>;
+
+		partitions {
+			compatible = "fixed-partitions";
+			#address-cells = <1>;
+			#size-cells = <1>;
+			art: partition@70000 {
+				label = "art";
+				reg = <0x70000 0x010000>;
+				read-only;
+			};
+		};
+	};
+
+	flash@1 {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		compatible = "spi-nand";
+		reg = <1>;
+		spi-max-frequency = <50000000>;
+	};
+
+	spidev@2 {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		compatible = "wch,ch943x";
+		reg = <2>;
+		spi-max-frequency = <50000000>;
+		interrupt-parent = <&gpio>;
+		interrupts = <12 IRQ_TYPE_LEVEL_LOW>;
+	};
+};
+
+&wmac {
+	status = "okay";
+	mtd-cal-data = <&art 0x1000>;
+};
+
+&eth0 {
+	status = "okay";
+	compatible = "qca,qca9530-eth", "syscon";
+	pll-data = <0x00001616 0x00000101 0x16000000>;
+	pll-reg = <0x4 0x2c 17>;
+	pll-handle = <&pll>;
+
+	reset-names = "mac";
+	resets = <&rst 9>;
+
+	mtd-mac-address = <&art 0x0>;
+
+	fixed-link {
+		speed = <100>;
+		full-duplex;
+	};
+};
+
+&mdio0 {
+	status = "okay";
+};
+
+&mdio1 {
+	status = "okay";
+	resets = <&rst 23>;
+	reset-names = "mdio";
+	builtin-switch;
+
+	builtin_switch: switch0@1f {
+		compatible = "qca,ar8229";
+
+		reg = <0x1f>;
+		resets = <&rst 8>;
+		reset-names = "switch";
+		phy-mode = "gmii";
+		qca,phy4-mii-enable;
+		qca,mib-poll-interval = <500>;
+
+		mdio-bus {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			swphy0: ethernet-phy@0 {
+				reg = <0>;
+				phy-mode = "mii";
+			};
+
+			swphy4: ethernet-phy@4 {
+				reg = <4>;
+				phy-mode = "mii";
+			};
+		};
+	};
+};
+
+&eth1 {
+	status = "okay";
+
+	compatible = "qca,qca9530-eth", "syscon", "simple-mfd";
+	resets = <&rst 13>;
+	reset-names = "mac";
+
+	phy-mode = "gmii";
+
+	phy-handle = <&swphy4>;
+	mtd-mac-address = <&art 0x6>;
+	fixed-link {
+		speed = <1000>;
+		full-duplex;
+	};
+};
+
