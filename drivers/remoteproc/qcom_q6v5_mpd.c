@@ -681,9 +681,13 @@ static int q6_wcss_stop(struct rproc *rproc)
 			upd_pdev = of_find_device_by_node(upd_np);
 			upd_rproc = platform_get_drvdata(upd_pdev);
 			upd_wcss = upd_rproc->priv;
-			complete(&upd_wcss->q6.spawn_done);
-			complete(&upd_wcss->q6.start_done);
-			complete(&upd_wcss->q6.stop_done);
+
+			/*Skip completion for textpd since it has no IRQ*/
+			if (strstr(upd_np->name, "text") == NULL) {
+				complete(&upd_wcss->q6.spawn_done);
+				complete(&upd_wcss->q6.start_done);
+				complete(&upd_wcss->q6.stop_done);
+			}
 
 			rproc_subsys_notify(upd_rproc,
 				SUBSYS_PREPARE_FOR_FATAL_SHUTDOWN, true);
