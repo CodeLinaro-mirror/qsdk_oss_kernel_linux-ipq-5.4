@@ -28,9 +28,10 @@
 #include "diagfwd_peripheral.h"
 #include "diagfwd_socket.h"
 #include "diag_ipc_logging.h"
+#include <linux/remoteproc.h>
 
-#include <soc/qcom/subsystem_notif.h>
-#include <soc/qcom/subsystem_restart.h>
+//#include <soc/qcom/subsystem_notif.h>
+//#include <soc/qcom/subsystem_restart.h>
 
 #define DIAG_SVC_ID		0x1001
 
@@ -1134,7 +1135,7 @@ int diag_socket_init(void)
 	struct diag_socket_info *info = NULL;
 	struct restart_notifier_block *nb;
 	int peripheral;
-	void *handle;
+//	void *handle;
 	int rc;
 	int i;
 
@@ -1153,7 +1154,7 @@ int diag_socket_init(void)
 
 	for (i = 0; i < ARRAY_SIZE(restart_notifiers); i++) {
 		nb = &restart_notifiers[i];
-		handle = subsys_notif_register_notifier(nb->name, &nb->nb);
+		rproc_register_subsys_notifier(nb->name, &nb->nb, NULL);
 		DIAG_LOG(DIAG_DEBUG_PERIPHERALS,
 			 "%s: registering notifier for '%s', handle=%pK\n",
 			 __func__, nb->name, handle);
