@@ -1027,6 +1027,8 @@ static void qrtr_node_rx_work(struct kthread_work *work)
 					radix_tree_for_each_slot(slot, &node->qrtr_tx_flow, &iter, 0) {
 						flow = *slot;
 						wake_up_interruptible_all(&flow->resume_tx);
+						kfree(flow);
+						radix_tree_delete(&node->qrtr_tx_flow, iter.index);
 					}
 					mutex_unlock(&node->qrtr_tx_lock);
 
