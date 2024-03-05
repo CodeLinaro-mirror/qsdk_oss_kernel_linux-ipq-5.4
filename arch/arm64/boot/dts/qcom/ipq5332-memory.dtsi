@@ -111,5 +111,9 @@
 			no-map;
 			reg = <0x0 0x4a900000 0x0 0x02b00000>;
 		};
+
+		minidump_mem: minidump_mem@0 {
+			no-map;
+		};
 	};
 };

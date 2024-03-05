@@ -118,6 +118,7 @@
 
 	ctx_save: ctx-save {
 		compatible = "qti,ctxt-save-ipq9574";
+		memory-region = <&minidump_mem>;
 	};
 
 	firmware {
@@ -3748,3 +3749,4 @@
 #include "ipq9574-coresight.dtsi"
 #include "ipq9574-thermal.dtsi"
 #include "ipq9574-cpr-regulator.dtsi"
+#include "ipq9574-noc.dtsi"

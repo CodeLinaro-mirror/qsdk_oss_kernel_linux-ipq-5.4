@@ -79,6 +79,7 @@
 
 	ctx_save: ctx-save {
 		compatible = "qti,ctxt-save-ipq8074";
+		memory-region = <&minidump_mem>;
 	};
 
 	qseecom {

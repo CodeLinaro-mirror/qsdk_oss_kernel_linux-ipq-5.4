@@ -117,5 +117,8 @@
 			status = "disabled";
                 };
 
+		minidump_mem: minidump_mem@0 {
+			no-map;
+		};
 	};
 };

@@ -435,7 +435,7 @@ static void handle_wake_func(struct work_struct *work)
 					      handle_wake_work);
 	struct pcie_port *pp = &(pcie->pci)->pp;
 
-	pr_debug("PCIE wake recieved\n");
+	dev_info(pcie->pci->dev, "PCIE wake recieved\n");
 	pci_lock_rescan_remove();
 	if (pcie->enumerated) {
 		pr_info("PCIe: RC has been already enumerated\n");
@@ -2997,8 +2997,6 @@ static int qcom_pcie_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, pcie);
 
-	ret = dw_pcie_host_init(pp);
-
 	pcie->wake_irq = platform_get_irq_byname_optional(pdev, "wake_gpio");
 
 	if (ret) {
@@ -3027,6 +3025,8 @@ static int qcom_pcie_probe(struct platform_device *pdev)
 			goto err_phy_exit;
 		}
 	}
+
+	ret = dw_pcie_host_init(pp);
 
 	pcie->global_irq = platform_get_irq_byname(pdev, "global_irq");
 	if (pcie->global_irq >= 0) {

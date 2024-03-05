@@ -1267,6 +1267,7 @@
 
 	ctx_save: ctx-save {
 		compatible = "qti,ctxt-save-ipq5018";
+		memory-region = <&minidump_mem>;
 	};
 
 	qti,sps {

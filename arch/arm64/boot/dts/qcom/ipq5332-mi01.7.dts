@@ -91,7 +91,7 @@
 
 	reserved-memory {
 
-		/delete-node/ q6_region;
+		/delete-node/ wcnss@4a900000;
 
 		q6_mem_regions: q6_mem_regions@4A900000  {
 			no-map;
@@ -163,22 +163,22 @@
 			reg = <0x0 0x51900000 0x0 0x500000>;
 		};
 
-		q6_qcn9160_data_1: q6_qcn9160_data_1@51E00000 {
+		q6_qcn9160_data_3: q6_qcn9160_data_3@51E00000 {
 			no-map;
 			reg = <0x0 0x51E00000 0x0 0xe00000>;
 		};
 
-		m3_dump_qcn9160_1: m3_dump_qcn9160_1@52C00000 {
+		m3_dump_qcn9160_3: m3_dump_qcn9160_3@52C00000 {
 			no-map;
 			reg = <0x0 0x52C00000 0x0 0x100000>;
 		};
 
-		q6_qcn9160_etr_1: q6_qcn9160_etr_1@52D00000 {
+		q6_qcn9160_etr_3: q6_qcn9160_etr_3@52D00000 {
 			no-map;
 			reg = <0x0 0x52D00000 0x0 0x100000>;
 		};
 
-		q6_qcn9160_caldb_1: q6_qcn9160_caldb_1@52E00000 {
+		q6_qcn9160_caldb_3: q6_qcn9160_caldb_3@52E00000 {
 			no-map;
 			reg = <0x0 0x52E00000 0x0 0x500000>;
 		};
@@ -748,13 +748,29 @@
 					qcom,smem-state-names = "shutdown",
 								"stop",
 								"spawn";
-					memory-region = <&q6_qcn9160_data_1>,
-							<&m3_dump_qcn9160_1>,
-							<&q6_qcn9160_etr_1>,
-							<&q6_qcn9160_caldb_1>;
+					memory-region = <&q6_qcn9160_data_3>,
+							<&m3_dump_qcn9160_3>,
+							<&q6_qcn9160_etr_3>,
+							<&q6_qcn9160_caldb_3>;
 					status = "ok";
 				};
 			};
+		};
+		wifi6: wifi6@f00000 {
+			compatible  = "qcom,cnss-qcn9160";
+			msi-parent = <&v2m0>;
+			qcom,multipd_arch;
+			qcom,userpd-subsys-name = "q6v5_wcss_userpd4";
+			qcom,rproc = <&q6_wcss_pd4>;
+			qcom,tgt-mem-mode = <0>;
+			qcom,board_id = <0x101>;
+			qcom,bdf-addr = <0x51E00000 0x51E00000 0x51E00000 0x0 0x0 0x0>;
+			qcom,caldb-addr = <0x52E00000 0x52E00000 0x52E00000 0x0 0x0 0x0>;
+			qcom,caldb-size = <0x500000>;
+			m3-dump-addr = <0x52C00000>;
+			qcom,pci_slot_id = <2>;
+			mem-region = <&q6_qcn9160_data_3>;
+			status = "ok";
 		};
 	};
 };
@@ -811,17 +827,3 @@
 	interrupts = <0 410 1>;
 };
 
-&wifi3 {
-	qcom,multipd_arch;
-	qcom,userpd-subsys-name = "q6v5_wcss_userpd4";
-	qcom,rproc = <&q6_wcss_pd4>;
-	qcom,tgt-mem-mode = <0>;
-	qcom,board_id = <0x101>;
-	qcom,bdf-addr = <0x51E00000 0x51E00000 0x51E00000 0x0 0x0 0x0>;
-	qcom,caldb-addr = <0x52E00000 0x52E00000 0x52E00000 0x0 0x0 0x0>;
-	qcom,caldb-size = <0x500000>;
-	m3-dump-addr = <0x52C00000>;
-	qcom,pci_slot_id = <2>;
-	mem-region = <&q6_qcn9160_data_1>;
-	status = "ok";
-};

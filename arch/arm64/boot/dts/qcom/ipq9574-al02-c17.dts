@@ -53,6 +53,20 @@
 				output-low;
 			};
 
+			pcie0_wake_pins: pcie0_wake_gpio {
+				pins = "gpio24";
+				function = "pcie0_wake";
+				drive-strength = <8>;
+				bias-pull-up;
+			};
+
+			pcie2_wake_pins: pcie2_wake_gpio {
+				pins = "gpio30";
+				function = "pcie2_wake";
+				drive-strength = <8>;
+				bias-pull-up;
+			};
+
 			blsp1_uart2_pins: blsp1_uart2_pinmux {
 				pins = "gpio34", "gpio35";
 				function = "blsp2_uart";
@@ -367,8 +381,11 @@
 		};
 
 		pcie0_x1: pci@28000000 {
-			pinctrl-0 = <&pci0_pin>;
+			pinctrl-0 = <&pcie0_wake_pins &pci0_pin>;
 			pinctrl-names = "default";
+			interrupts-extended = <&tlmm 24 IRQ_TYPE_LEVEL_HIGH>,
+					      <&intc GIC_SPI 51 IRQ_TYPE_LEVEL_HIGH>;
+			interrupt-names = "wake_gpio", "global_irq";
 			perst-gpio = <&tlmm 23 1>;
 			max-payload-size = <1>; // 1-256 TLP bytes for WKK
 			status = "ok";
@@ -402,8 +419,11 @@
 		};
 
 		pcie2_x2: pci@20000000 {
-			pinctrl-0 = <&pci2_pin>;
+			pinctrl-0 = <&pcie2_wake_pins &pci2_pin>;
 			pinctrl-names = "default";
+			interrupts-extended = <&tlmm 30 IRQ_TYPE_LEVEL_HIGH>,
+					      <&intc GIC_SPI 125 IRQ_TYPE_LEVEL_HIGH>;
+			interrupt-names = "wake_gpio", "global_irq";
 			perst-gpio = <&tlmm 29 1>;
 			max-payload-size = <1>; // 1-256 TLP bytes for WKK
 			status = "ok";

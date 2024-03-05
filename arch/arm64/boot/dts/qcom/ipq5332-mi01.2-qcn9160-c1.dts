@@ -198,6 +198,9 @@
 			size = <0x0 0x00900000>;
                 };
 
+		minidump_mem: minidump_mem@0 {
+			no-map;
+		};
 	};
 
 	soc {

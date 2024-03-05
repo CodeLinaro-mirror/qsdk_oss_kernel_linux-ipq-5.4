@@ -2604,6 +2604,7 @@
 
 	ctx_save: ctx-save {
 		compatible = "qti,ctxt-save-ipq5332";
+		memory-region = <&minidump_mem>;
 	};
 
 	qseecom: qseecom {
