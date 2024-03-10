@@ -451,6 +451,7 @@
 							0x4 0x4 0x18 0x3 0x0 0x0  /* RFA1p2 Rail, GPIO24, Drive strength 0x3 */
 							0x0 0x4 0x0 0x0 0x0 0x0>; /* End of arguments */
 					license-file = "";
+					qcom,wsi = <&wsi>;
 #if defined(__CNSS2__)
 					qrtr_node_id = <0x31>;
 					memory-region = <0>,<&mhi_region1>;
@@ -471,7 +472,6 @@
 					*/
 					memory-region = <&qcn9224_pcie1>;
 					qcom,board_id = <0x01>;
-					qcom,wsi = <&wsi>;
 					qcom,pta-num = <0>;
 					qcom,coex-mode = <0x2>;
 					qcom,bt-active-time = <0x18>;
@@ -508,6 +508,7 @@
 							0x4 0x4 0x18 0x3 0x0 0x0  /* RFA1p2 Rail, GPIO24, Drive strength 0x3 */
 							0x0 0x4 0x0 0x0 0x0 0x0>; /* End of arguments */
 					license-file = "";
+					qcom,wsi = <&wsi>;
 #if defined(__CNSS2__)
 					qrtr_node_id = <0x32>;
 					memory-region = <0>,<&mhi_region2>;
@@ -528,7 +529,6 @@
 					*/
 					memory-region = <&qcn9224_pcie2>;
 					qcom,board_id = <0x04>;
-					qcom,wsi = <&wsi>;
 #endif
 				};
 			};
@@ -559,6 +559,7 @@
 							0x4 0x4 0x18 0x3 0x0 0x0  /* RFA1p2 Rail, GPIO24, Drive strength 0x3 */
 							0x0 0x4 0x0 0x0 0x0 0x0>; /* End of arguments */
 					license-file = "";
+					qcom,wsi = <&wsi>;
 #if defined(__CNSS2__)
 					qrtr_node_id = <0x33>;
 					memory-region = <0>,<&mhi_region3>;
@@ -579,7 +580,6 @@
 					 */
 					memory-region = <&qcn9224_pcie3>;
 					qcom,board_id = <0x02>;
-					qcom,wsi = <&wsi>;
 #endif
 				};
 			};
