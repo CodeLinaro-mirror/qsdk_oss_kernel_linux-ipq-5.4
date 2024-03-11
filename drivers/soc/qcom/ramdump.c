@@ -225,11 +225,10 @@ static ssize_t ramdump_read(struct file *filep, char __user *buf, size_t count,
 
 	/* EOF check */
 	if (data_left == 0) {
-		pr_debug("Ramdump(%s): Ramdump complete. %lld bytes read.",
+		pr_info("Ramdump(%s): Ramdump complete. %lld bytes read.",
 			rd_dev->name, *pos);
 		rd_dev->ramdump_status = 0;
-		ret = 0;
-		goto ramdump_done;
+		return 0;
 	}
 
 	copy_size = min(count, (size_t)MAX_IOREMAP_SIZE);
