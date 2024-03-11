@@ -443,16 +443,19 @@ static void handle_wake_func(struct work_struct *work)
 		return;
 	}
 
-	if (!gpiod_get_value(mdm2ap_e911)) {
-		pr_debug("[%s]No data call.", __func__);
-		ret = pci_create_scan_root_bus(pp);
-		if (ret) {
-			pr_err("PCIe: failed to enable RC upon wake request from the device\n");
-		} else {
-			pcie->enumerated = true;
-			pr_info("PCIe: enumerated RC successfully upon wake request from the device\n");
+	if (pcie->mdm2ap_e911_irq >= 0) {
+		if (!gpiod_get_value(mdm2ap_e911)) {
+			pr_debug("[%s]No data call.", __func__);
+			ret = pci_create_scan_root_bus(pp);
+			if (ret) {
+				pr_err("PCIe: failed to enable RC upon wake request from the device\n");
+			} else {
+				pcie->enumerated = true;
+				pr_info("PCIe: enumerated RC successfully upon wake request from the device\n");
+			}
 		}
 	}
+
 	pci_unlock_rescan_remove();
 }
 
@@ -2998,21 +3001,6 @@ static int qcom_pcie_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, pcie);
 
 	pcie->wake_irq = platform_get_irq_byname_optional(pdev, "wake_gpio");
-
-	if (ret) {
-		if (pcie->wake_irq < 0) {
-			dev_err(dev, "cannot initialize host\n");
-			pm_runtime_disable(&pdev->dev);
-			goto err_phy_exit;
-		}
-		pr_info("[%s] PCIe: RC%d is not enabled during bootup: "
-			"It will be enumerated upon client request\n", __func__, rc_idx);
-
-	} else {
-		pcie->enumerated = true;
-		pr_info("[%s ] PCIe: RC enabled during bootup\n", __func__);
-	}
-
 	if (pcie->wake_irq >= 0) {
 		INIT_WORK(&pcie->handle_wake_work, handle_wake_func);
 		ret = devm_request_irq(&pdev->dev, pcie->wake_irq,
@@ -3027,6 +3015,19 @@ static int qcom_pcie_probe(struct platform_device *pdev)
 	}
 
 	ret = dw_pcie_host_init(pp);
+	if (ret) {
+		if (pcie->wake_irq < 0 || pcie->mdm2ap_e911_irq < 0) {
+			dev_err(dev, "cannot initialize host\n");
+			pm_runtime_disable(&pdev->dev);
+			goto err_phy_exit;
+		}
+		pr_info("[%s] PCIe: RC%d is not enabled during bootup: "
+			"It will be enumerated upon client request\n", __func__, rc_idx);
+
+	} else {
+		pcie->enumerated = true;
+		pr_info("[%s ] PCIe: RC enabled during bootup\n", __func__);
+	}
 
 	pcie->global_irq = platform_get_irq_byname(pdev, "global_irq");
 	if (pcie->global_irq >= 0) {
