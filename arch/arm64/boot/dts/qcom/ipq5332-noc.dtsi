@@ -62,7 +62,7 @@ sys0_tprobe: sys0 {
 		     ddr_rd_wr_counter_addr = <0x4053c0>;
 		     ddr_rd_counter_addr = <0x405440>;
 		     ddr_wr_counter_addr = <0x4054c0>;
-		     hist_bin_width = <0x16>;
+		     hist_bin_width = <0xf>;
 		     config_tr_type = <0x1>;
 		     status = "ok";
 	     };
@@ -90,7 +90,7 @@ wcss_q6_tprobe: wcss_q6 {
 			ddr_rd_wr_counter_addr = <0x4053c0>;
 			ddr_rd_counter_addr = <0x405440>;
 			ddr_wr_counter_addr = <0x4054c0>;
-			hist_bin_width = <0x64>;
+			hist_bin_width = <0x1A>;
 			config_tr_type = <0x1>;
 			status = "ok";
 		};
@@ -104,7 +104,7 @@ pcie_G3X1_0_tprobe: pcie1 {
 			    ddr_rd_wr_counter_addr = <0x4053c0>;
 			    ddr_rd_counter_addr = <0x405440>;
 			    ddr_wr_counter_addr = <0x4054c0>;
-			    hist_bin_width = <0x64>;
+			    hist_bin_width = <0x11>;
 			    status = "ok";
 		    };
 #endif
@@ -117,7 +117,7 @@ pcie_G3X2_tprobe: pcie2 {
 			  ddr_rd_wr_counter_addr = <0x4053c0>;
 			  ddr_rd_counter_addr = <0x405440>;
 			  ddr_wr_counter_addr = <0x4054c0>;
-			  hist_bin_width = <0x64>;
+			  hist_bin_width = <0x11>;
 			  status = "ok";
 		  };
 
@@ -129,7 +129,7 @@ ppe_tprobe: nss_ppe {
 		    ddr_rd_wr_counter_addr = <0x4053c0>;
 		    ddr_rd_counter_addr = <0x405440>;
 		    ddr_wr_counter_addr = <0x4054c0>;
-		    hist_bin_width = <0x64>;
+		    hist_bin_width = <0xc>;
 		    status = "ok";
 	    };
 };
