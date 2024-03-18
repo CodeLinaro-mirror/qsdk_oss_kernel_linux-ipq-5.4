@@ -44,6 +44,7 @@
 
 #define QTI_CMD_AES_CLEAR_KEY		10
 #define QTI_CMD_AES_DERIVE_KEY		9
+#define QTI_CMD_AES_DERIVE_128_KEY	0xE
 #define CLIENT_CMD_CRYPTO_AES_DECRYPT	8
 #define CLIENT_CMD_CRYPTO_AES_ENCRYPT	7
 #define CLIENT_CMD_CRYPTO_AES_64	6
@@ -578,7 +579,6 @@ static struct device *qdev;
  */
 static uint8_t encrypt_text[MAX_INPUT_SIZE];
 static uint8_t decrypt_text[MAX_INPUT_SIZE];
-static uint32_t max_context_len;
 
 #define MUL		0x1
 #define ENC		0x2
@@ -619,6 +619,9 @@ static ssize_t generate_key_blob(struct device *dev,
 				struct device_attribute *attr, char *buf);
 
 static ssize_t show_aes_derive_key(struct device *dev,
+				struct device_attribute *attr, char *buf);
+
+static ssize_t show_aes_derive_128_byte_key(struct device *dev,
 				struct device_attribute *attr, char *buf);
 
 static ssize_t store_aes_derive_key(struct device *dev,
@@ -918,6 +921,8 @@ static DEVICE_ATTR(blow, 0644, NULL, store_blow_fuse_write_qtiapp);
 
 static DEVICE_ATTR(generate, 0644, generate_key_blob, NULL);
 static DEVICE_ATTR(derive_aes_key, 0644, show_aes_derive_key, store_aes_derive_key);
+static DEVICE_ATTR(derive_aes_max_ctxt_key, 0644,
+		show_aes_derive_128_byte_key, store_aes_derive_key);
 static DEVICE_ATTR(clear_key, 0644, NULL, store_aes_clear_key);
 static DEVICE_ATTR(import, 0644, import_key_blob, store_key);
 static DEVICE_ATTR(key_blob, 0644, NULL, store_key_blob);
@@ -951,6 +956,7 @@ static struct attribute *sec_key_attrs[] = {
 
 static struct attribute *sec_key_aesv2_attrs[] = {
 	&dev_attr_derive_aes_key.attr,
+	&dev_attr_derive_aes_max_ctxt_key.attr,
 	&dev_attr_clear_key.attr,
 	&dev_attr_context_data.attr,
 	&dev_attr_source_data.attr,

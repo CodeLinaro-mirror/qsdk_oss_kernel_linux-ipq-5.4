@@ -276,6 +276,11 @@ To derive the key with given inputs:
 (4) cat /sys/sec_key/derive_aes_key > key_handle.txt
 (5) cat key_handle.txt
 
+(or)
+
+To derive the key for 128 byte context:
+(4) cat /sys/sec_key/derive_aes_max_ctxt_key > key_handle.txt
+(5) cat key_handle.txt
 clear key API:
 
 Note:
