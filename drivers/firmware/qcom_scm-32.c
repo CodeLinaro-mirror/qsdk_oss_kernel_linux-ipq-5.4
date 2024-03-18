@@ -1803,6 +1803,30 @@ int __qti_scm_get_ipq5332_fuse_list(struct device *dev, u32 svc_id,
 }
 
 /**
+ * __qti_scm_is_feature_available() - Check if a given feature is enabled by TZ,
+ *                   and its version if enabled.
+ * @feature_id: ID of the feature to check in TZ for availablilty/version.
+ *
+ * Return: 0 on success and the version of the feature in result.
+ *
+ * TZ returns 0xFFFFFFFF if this smc call is not supported or
+ * if smc call supported but feature ID not supported
+ */
+long  __qti_scm_is_feature_available(struct device *dev, u32 svc_id, u32 cmd_id,
+		u32 feature_id)
+{
+	long ret;
+	struct scm_desc desc = {0};
+
+	desc.args[0] = feature_id;
+	desc.arginfo = SCM_ARGS(1, QCOM_SCM_VAL);
+	ret = qti_scm_call2(dev, SCM_SIP_FNID(svc_id, cmd_id), &desc);
+	if (!ret)
+		ret = le32_to_cpu(desc.ret[0]);
+	return ret;
+}
+
+/**
  * __qti_scm_get_device_attestation_ephimeral_key() - Get M3 public ephimeral key from TME-L
  *
  * @svc_id: SCM service id
