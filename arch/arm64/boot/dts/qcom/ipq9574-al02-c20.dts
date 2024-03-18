@@ -406,6 +406,11 @@
 			};
 		};
 
+		wsi: wsi {
+			id = <0>;
+			num_chip = <4>;
+		};
+
 		pcie0_x1: pci@28000000 {
 			pinctrl-0 = <&pcie0_wake_pins &pci0_pin>;
 			pinctrl-names = "default";
@@ -427,6 +432,7 @@
 							0x4 0x4 0x18 0x3 0x0 0x0  /* RFA1p2 Rail, GPIO24, Drive strength 0x3 */
 							0x0 0x4 0x0 0x0 0x0 0x0>; /* End of arguments */
 					license-file = "";
+					qcom,wsi = <&wsi>;
 #if defined(__CNSS2__)
 					qrtr_node_id = <0x30>;
 					memory-region = <0>,<&mhi_region0>;
@@ -461,6 +467,7 @@
 							0x4 0x4 0x18 0x3 0x0 0x0  /* RFA1p2 Rail, GPIO24, Drive strength 0x3 */
 							0x0 0x4 0x0 0x0 0x0 0x0>; /* End of arguments */
 					license-file = "";
+					qcom,wsi = <&wsi>;
 #if defined(__CNSS2__)
 					qrtr_node_id = <0x31>;
 					memory-region = <0>,<&mhi_region1>;
@@ -511,6 +518,7 @@
 							0x4 0x4 0x18 0x3 0x0 0x0  /* RFA1p2 Rail, GPIO24, Drive strength 0x3 */
 							0x0 0x4 0x0 0x0 0x0 0x0>; /* End of arguments */
 					license-file = "";
+					qcom,wsi = <&wsi>;
 #if defined(__CNSS2__)
 					qrtr_node_id = <0x32>;
 					memory-region = <0>,<&mhi_region2>;
@@ -561,6 +569,7 @@
 							0x4 0x4 0x18 0x3 0x0 0x0  /* RFA1p2 Rail, GPIO24, Drive strength 0x3 */
 							0x0 0x4 0x0 0x0 0x0 0x0>; /* End of arguments */
 					license-file = "";
+					qcom,wsi = <&wsi>;
 #if defined(__CNSS2__)
 					qrtr_node_id = <0x33>;
 					memory-region = <0>,<&mhi_region3>;

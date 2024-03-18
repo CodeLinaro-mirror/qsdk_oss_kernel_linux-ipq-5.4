@@ -38,6 +38,15 @@
 #define NUD_VALID	(NUD_PERMANENT|NUD_NOARP|NUD_REACHABLE|NUD_PROBE|NUD_STALE|NUD_DELAY)
 #define NUD_CONNECTED	(NUD_PERMANENT|NUD_NOARP|NUD_REACHABLE)
 
+/*
+ * Neighbour events for notification to listening drivers
+ */
+enum neigh_event_notify {
+	NEIGH_EVENT_NOTIFY_UPDATE = 0,
+	NEIGH_EVENT_NOTIFY_ADD,
+	NEIGH_EVENT_NOTIFY_DELETE,
+};
+
 struct neighbour;
 
 enum {
