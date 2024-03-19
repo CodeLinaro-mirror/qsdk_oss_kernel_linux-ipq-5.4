@@ -88,7 +88,6 @@ struct minidump2mem_metadata {
 	struct delayed_work work;
 	struct class *dev_class;
 	struct mutex dev_lock;
-	unsigned long cur_buf_off;
 	unsigned int max_dump_sz;
 	int dev_major_no;
 	unsigned char *rsvd_mem_ptr;
@@ -175,8 +174,6 @@ int minidump_dump_wlan_modules(void);
 extern int log_buf_len;
 
 #define MINIDUMP2MEM_CMN_HEADER_SIZE		(32)
-#define MINIDUMP2MEM_DUMP_HEADER_SIZE		(36)
-#define MINIDUMP2MEM_TOLERANCE_BUF_SZ		(1024)
 #define MINIDUMP_MAGIC1_COOKIE			(0x4D494E49)	/* MINI */
 #define MINIDUMP_MAGIC2_COOKIE			(0x44554D50)	/* DUMP */
 
@@ -677,10 +674,6 @@ int ctx_save_add_tlv(unsigned char type, unsigned int size, const char *data)
 	unsigned char *x;
 	unsigned char *y;
 	unsigned long flags;
-#ifdef CONFIG_QCA_MINIDUMP
-	uint32_t dump_size = 0;
-	struct minidump_tlv_info *tlv_info = (struct minidump_tlv_info *)data;
-#endif /* CONFIG_QCA_MINIDUMP */
 
 	if (!tlv_msg.msg_buffer) {
 		return -ENOMEM;
@@ -694,38 +687,6 @@ int ctx_save_add_tlv(unsigned char type, unsigned int size, const char *data)
 		spin_unlock_irqrestore(&tlv_msg.spinlock, flags);
 		return -ENOBUFS;
 	}
-
-#ifdef CONFIG_QCA_MINIDUMP
-	if (dump2mem_info.rsvd_mem) {
-		switch (type) {
-		case CTX_SAVE_LOG_DUMP_TYPE_DMESG:
-			dump_size = BIT(CONFIG_LOG_BUF_SHIFT);
-			break;
-		case CTX_SAVE_LOG_DUMP_TYPE_UNAME:
-			dump_size = size;
-			break;
-		case CTX_SAVE_LOG_DUMP_TYPE_WLAN_MOD_INFO:
-			dump_size = METADATA_FILE_SZ;
-			break;
-		case CTX_SAVE_LOG_DUMP_TYPE_WLAN_MMU_INFO:
-			dump_size = MMU_FILE_SZ;
-			break;
-		default:
-			dump_size = tlv_info->size;
-			break;
-		}
-
-		if ((dump2mem_info.cur_buf_off + dump_size +
-				MINIDUMP2MEM_TOLERANCE_BUF_SZ) >
-				dump2mem_info.rsvd_mem->size) {
-			spin_unlock_irqrestore(&tlv_msg.spinlock, flags);
-			return -ENOBUFS;
-		}
-
-		dump2mem_info.cur_buf_off += (ALIGN(dump_size, 64)
-				+ MINIDUMP2MEM_DUMP_HEADER_SIZE);
-	}
-#endif /* CONFIG_QCA_MINIDUMP */
 
 	x[0] = type;
 	x[1] = size;
@@ -1667,9 +1628,6 @@ static int ctx_save_probe(struct platform_device *pdev)
 		if (!dump2mem_info.rsvd_mem)
 			pr_warn("Minidump: rsvd region is not specified \n");
 		else {
-			dump2mem_info.cur_buf_off =
-				ALIGN(MINIDUMP2MEM_CMN_HEADER_SIZE, 64);
-
 			INIT_DELAYED_WORK(&dump2mem_info.work,
 					dump2mem_workfn);
 
