@@ -3183,6 +3183,11 @@ struct ieee80211_tspec_ie {
 	__le16 medium_time;
 } __packed;
 
+struct ieee80211_he_6ghz_capa {
+        /* uses IEEE80211_HE_6GHZ_CAP_* below */
+        __le16 capa;
+} __packed;
+
 /**
  * ieee80211_get_qos_ctl - get pointer to qos control bytes
  * @hdr: the frame
