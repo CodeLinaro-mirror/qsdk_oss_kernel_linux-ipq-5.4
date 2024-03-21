@@ -442,15 +442,16 @@ void ch943x_raw_write(struct uart_port *port, const void *reg, unsigned char *bu
 	int writesum = 0;
 	int i;
 	u8 *txbuf;
-	struct spi_transfer x;
-	struct spi_transfer t[2];
+	struct spi_transfer x = {0};
+	struct spi_transfer t[2] = {{0}, {0}};
 
 	txbuf = kmalloc(2048, GFP_KERNEL);
 	if (!txbuf)
 		return;
-
+	
 	x.tx_buf = txbuf;
 	x.len = len +1;
+	x.delay_usecs = CH943X_CMD_DELAY;
 
 	t[0].tx_buf = reg;
 	t[0].len = 1;
@@ -502,7 +503,7 @@ static void ch943x_raw_read(struct uart_port *port, u8 reg, unsigned char *buf, 
 	ssize_t status;
 	struct spi_message m;
 	u8 *rxbuf;
-	struct spi_transfer x;
+	struct spi_transfer x = {0};
 
 	rxbuf = (u8 *)kmalloc(4096, GFP_KERNEL);
 	if (!rxbuf)
@@ -1324,6 +1325,7 @@ static int ch943x_probe(struct spi_device *spi, struct ch943x_devtype *devtype, 
 	}
 
 	ret = ch943x_port_read_multi(&s->p[0].port, 0, CH943X_CHIP_VER_REG, s->ver, 4);
+	dev_dbg(dev, "ch9434 ver: %x %x %x %x\n", s->ver[0], s->ver[1], s->ver[2], s->ver[3]);
 	if (ret)
 		goto out;
 	if ((s->ver[3] != 0x5A) || (s->ver[2] != (s->ver[0] + s->ver[1]))) {
@@ -1463,14 +1465,14 @@ static int ch943x_spi_probe(struct spi_device *spi)
 	int ret;
 	u32 save;
 
-	dev_dbg(&spi->dev, "gpio_to_irq:%d, spi->irq:%d\n", gpio_to_irq(GPIO_NUMBER), spi->irq);
+	dev_dbg(&spi->dev, "gpio_to_irq:%d, spi->irq:%d, spi->mode: %d\n", gpio_to_irq(GPIO_NUMBER), spi->irq, spi->mode);
 	save = spi->mode;
-	spi->mode |= SPI_MODE_3;
+	spi->mode |= SPI_MODE_0;
 
 	if (spi_setup(spi) < 0) {
 		spi->mode = save;
 	} else {
-		dev_dbg(&spi->dev, "change to SPI MODE 3!\n");
+		dev_dbg(&spi->dev, "change to SPI MODE 0!\n");
 	}
 
 /* if your platform supports acquire irq number from dts */
