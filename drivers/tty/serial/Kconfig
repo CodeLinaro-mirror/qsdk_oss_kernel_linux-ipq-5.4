@@ -1573,6 +1573,13 @@ config SERIAL_MILBEAUT_USIO_CONSOLE
 	  receives all kernel messages and warnings and which allows logins in
 	  single user mode).
 
+config SERIAL_CH9434
+	tristate "SERIAL_CH9434 serial support"
+	depends on SPI
+	select SERIAL_CORE
+	help
+		This selects support for ch9434 serial ports
+
 endmenu
 
 config SERIAL_MCTRL_GPIO
