@@ -1397,6 +1397,8 @@ enum nl80211_commands {
 
 	NL80211_CMD_SET_FILS_AAD = 146,
 
+	NL80211_CMD_ADD_LINK_STA = 150,
+
 	/* add new commands above here */
 
 	/* used to define NL80211_CMD_MAX below */
@@ -3000,6 +3002,7 @@ enum nl80211_attrs {
 	NL80211_ATTR_EHT_CAPABILITY = 310,
 
 	NL80211_ATTR_MLO_LINK_ID = 313,
+	NL80211_ATTR_MLD_ADDR,
 
 	NL80211_ATTR_EHT_PUNCTURE_BITMAP = 350,
 	NL80211_ATTR_MLD_MAC,
