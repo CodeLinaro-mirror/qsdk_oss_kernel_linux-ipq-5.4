@@ -1185,6 +1185,9 @@ static void ch943x_shutdown(struct uart_port *port)
 
 	dev_dbg(&s->spi_dev->dev, "%s\n", __func__);
 
+	flush_work(&one->stop_tx_work);
+	flush_work(&one->stop_rx_work);
+
 	/* Disable all interrupts */
 	ch943x_port_write(port, CH943X_IER_REG, 0);
 	ch943x_port_write(port, CH943X_MCR_REG, 0);
