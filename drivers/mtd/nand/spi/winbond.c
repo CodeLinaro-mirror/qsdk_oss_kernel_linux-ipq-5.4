@@ -133,7 +133,7 @@ static int w25n02kv_n04kv_ecc_get_status(struct spinand_device *spinand,
 }
 
 static const struct spinand_info winbond_spinand_table[] = {
-	SPINAND_INFO("W25M02GV", 0xAB,
+	SPINAND_INFO("W25M02GV", 0xAB21,
 		     NAND_MEMORG(1, 2048, 64, 64, 1024, 20, 1, 1, 2),
 		     NAND_ECCREQ(1, 512),
 		     SPINAND_INFO_OP_VARIANTS(&read_cache_variants,
@@ -142,7 +142,7 @@ static const struct spinand_info winbond_spinand_table[] = {
 		     0,
 		     SPINAND_ECCINFO(&w25m02gv_ooblayout, NULL),
 		     SPINAND_SELECT_TARGET(w25m02gv_select_target)),
-	SPINAND_INFO("W25N01GV", 0xAA,
+	SPINAND_INFO("W25N01GV", 0xAA21,
 		     NAND_MEMORG(1, 2048, 64, 64, 1024, 20, 1, 1, 1),
 		     NAND_ECCREQ(1, 512),
 		     SPINAND_INFO_OP_VARIANTS(&read_cache_variants,
@@ -150,7 +150,7 @@ static const struct spinand_info winbond_spinand_table[] = {
 					      &update_cache_variants),
 		     0,
 		     SPINAND_ECCINFO(&w25m02gv_ooblayout, NULL)),
-	SPINAND_INFO("W25N04KV", 0xAA,
+	SPINAND_INFO("W25N04KV", 0xAA23,
 		     NAND_MEMORG(1, 2048, 128, 64, 4096, 40, 2, 1, 1),
 		     NAND_ECCREQ(4, 512),
 		     SPINAND_INFO_OP_VARIANTS(&read_cache_variants,
@@ -170,6 +170,7 @@ static int winbond_spinand_detect(struct spinand_device *spinand)
 {
 	u8 *id = spinand->id.data;
 	int ret;
+	u16 devid = 0;
 
 	/*
 	 * Winbond SPI NAND read ID need a dummy byte,
@@ -178,8 +179,9 @@ static int winbond_spinand_detect(struct spinand_device *spinand)
 	if (id[1] != SPINAND_MFR_WINBOND)
 		return 0;
 
+	devid = (id[2]<<8) | id[3];
 	ret = spinand_match_and_init(spinand, winbond_spinand_table,
-				     ARRAY_SIZE(winbond_spinand_table), id[2]);
+				     ARRAY_SIZE(winbond_spinand_table), devid);
 	if (ret)
 		return ret;
 
