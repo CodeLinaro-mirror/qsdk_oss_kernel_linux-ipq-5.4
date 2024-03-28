@@ -76,6 +76,7 @@
 #include <linux/capability.h>
 #include <linux/user_namespace.h>
 #include <linux/indirect_call_wrapper.h>
+#include <linux/kmemleak.h>
 
 #include "datagram.h"
 
@@ -485,6 +486,12 @@ struct sk_buff *__netdev_alloc_skb(struct net_device *dev,
 	skb = skb_recycler_alloc(dev, length, reset_skb);
 	if (likely(skb)) {
 		skb_recycler_clear_flags(skb);
+#ifdef CONFIG_DEBUG_KMEMLEAK
+		kmemleak_update_trace(skb);
+		kmemleak_restore(skb, 1);
+		kmemleak_update_trace(skb->head);
+		kmemleak_restore(skb->head, 1);
+#endif
 		return skb;
 	}
 
@@ -696,6 +703,12 @@ struct sk_buff *__netdev_alloc_skb_no_skb_reset(struct net_device *dev,
 #ifdef CONFIG_SKB_RECYCLER
 	skb = skb_recycler_alloc(dev, length, reset_skb);
 	if (likely(skb)) {
+#ifdef CONFIG_DEBUG_KMEMLEAK
+		kmemleak_update_trace(skb);
+		kmemleak_restore(skb, 1);
+		kmemleak_update_trace(skb->head);
+		kmemleak_restore(skb->head, 1);
+#endif
 		skb->fast_recycled = 0;
 		skb->fast_qdisc = 0;
 		return skb;
