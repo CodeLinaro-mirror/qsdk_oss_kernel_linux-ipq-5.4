@@ -20,6 +20,7 @@
 #include <linux/proc_fs.h>
 #include <linux/string.h>
 #include <linux/kmemleak.h>
+#include <linux/debug_mem_usage.h>
 
 #include "skbuff_debug.h"
 
@@ -35,26 +36,6 @@ static int skb_recycle_spare_max_skbs = SKB_RECYCLE_SPARE_MAX_SKBS;
 #endif
 
 static int skb_recycling_enable = 1;
-
-#ifdef CONFIG_DEBUG_MEM_USAGE
-#define mem_debug_update_skb(skb) \
-do { \
-	mem_tracer_update_caller(skb->head); \
-	mem_tracer_update_caller(skb); \
-} while (0)
-
-#define mem_debug_update_skb_list(skb_list) \
-do { \
-	struct sk_buff *skb = NULL, *next = NULL; \
-	skb_queue_walk_safe(skb_list, skb, next) { \
-		if (skb) \
-			mem_debug_update_skb(skb); \
-	} \
-} while (0)
-#else
-#define  mem_debug_update_skb(skb)
-#define  mem_debug_update_skb_list(skb_list)
-#endif
 
 #ifdef CONFIG_DEBUG_KMEMLEAK
 #define mem_leak_free_skb(skb) \
