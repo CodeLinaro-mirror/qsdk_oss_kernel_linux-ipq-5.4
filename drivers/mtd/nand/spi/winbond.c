@@ -40,7 +40,13 @@ static SPINAND_OP_VARIANTS(update_cache_variants,
 static int w25n02kv_n04kv_ooblayout_ecc(struct mtd_info *mtd, int section,
 				  struct mtd_oob_region *region)
 {
-	return -ERANGE;
+	if (section > 3)
+		return -ERANGE;
+
+	region->offset = (16 * section) + 64;
+	region->length = 13;
+
+	return 0;
 }
 
 static int w25n02kv_n04kv_ooblayout_free(struct mtd_info *mtd, int section,
