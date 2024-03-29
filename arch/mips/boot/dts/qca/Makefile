@@ -13,4 +13,4 @@ dtb-$(CONFIG_ATH79)			+= cus532k_nand.dtb
 dtb-$(CONFIG_ATH79)			+= ap147ioe_nand.dtb
 dtb-$(CONFIG_ATH79)			+= ap147ioe_16M.dtb
 dtb-$(CONFIG_ATH79)			+= ap143_16M.dtb
-dtb-$(CONFIG_ATH79)			+= cus531_711.dtb
+dtb-$(CONFIG_ATH79)			+= cus531_711_nand.dtb
