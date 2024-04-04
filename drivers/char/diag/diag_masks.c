@@ -776,7 +776,7 @@ static int diag_cmd_get_ssid_range(unsigned char *src_buf, int src_len,
 	int write_len = 0;
 	uint8_t msg_mask_tbl_count = 0;
 	struct diag_msg_mask_t *mask_ptr = NULL;
-	struct diag_msg_ssid_query_t rsp;
+	struct diag_msg_ssid_query_t rsp = {0};
 	struct diag_msg_ssid_query_sub_t rsp_ms;
 	struct diag_ssid_range_t ssid_range;
 	struct diag_mask_info *mask_info = NULL;
@@ -862,9 +862,9 @@ static int diag_cmd_get_build_mask(unsigned char *src_buf, int src_len,
 	int header_len = 0;
 	struct diag_msg_mask_t *build_mask = NULL;
 	struct diag_build_mask_req_t *req = NULL;
-	struct diag_msg_build_mask_t rsp;
+	struct diag_msg_build_mask_t rsp = {0};
 	struct diag_build_mask_req_sub_t *req_sub = NULL;
-	struct diag_msg_build_mask_sub_t rsp_sub;
+	struct diag_msg_build_mask_sub_t rsp_sub = {0};
 	struct diag_ssid_range_t ssid_range;
 
 	if (!src_buf || !dest_buf || dest_len <= 0 ||
@@ -958,9 +958,9 @@ static int diag_cmd_get_msg_mask(unsigned char *src_buf, int src_len,
 	uint8_t msg_mask_tbl_count = 0;
 	struct diag_msg_mask_t *mask = NULL;
 	struct diag_build_mask_req_t *req = NULL;
-	struct diag_msg_build_mask_t rsp;
+	struct diag_msg_build_mask_t rsp = {0};
 	struct diag_msg_build_mask_sub_t *req_sub = NULL;
-	struct diag_msg_build_mask_sub_t rsp_sub;
+	struct diag_msg_build_mask_sub_t rsp_sub = {0};
 	struct diag_mask_info *mask_info = NULL;
 	struct diag_md_session_t *info = NULL;
 	struct diag_multisim_masks *ms_ptr = NULL;
@@ -1271,9 +1271,9 @@ static int diag_cmd_set_all_msg_mask(unsigned char *src_buf, int src_len,
 {
 	int i, write_len = 0, peripheral, sub_index = INVALID_INDEX;
 	int header_len = 0, status, ret = -EINVAL;
-	struct diag_msg_config_rsp_t rsp;
+	struct diag_msg_config_rsp_t rsp = {0};
 	struct diag_msg_config_rsp_t *req = NULL;
-	struct diag_msg_config_rsp_sub_t rsp_sub;
+	struct diag_msg_config_rsp_sub_t rsp_sub = {0};
 	struct diag_msg_config_rsp_sub_t *req_sub = NULL;
 	struct diag_msg_mask_t *mask = NULL;
 	struct diag_mask_info *mask_info = NULL;
@@ -1413,8 +1413,8 @@ static int diag_cmd_get_event_mask(unsigned char *src_buf, int src_len,
 {
 	int write_len = 0, sub_index;
 	uint32_t mask_size;
-	struct diag_event_mask_config_t rsp;
-	struct diag_event_mask_config_sub_t rsp_sub;
+	struct diag_event_mask_config_t rsp = {0};
+	struct diag_event_mask_config_sub_t rsp_sub = {0};
 	struct diag_event_mask_req_sub_t *req = NULL;
 	struct diag_multisim_masks *ms_ptr = NULL;
 
@@ -1478,9 +1478,9 @@ static int diag_cmd_update_event_mask(unsigned char *src_buf, int src_len,
 	int i, write_len = 0, mask_len = 0, peripheral;
 	int sub_index = INVALID_INDEX, preset = 0;
 	int header_len = 0, ret = -EINVAL;
-	struct diag_event_mask_config_t rsp;
+	struct diag_event_mask_config_t rsp = {0};
 	struct diag_event_mask_config_t *req;
-	struct diag_event_mask_config_sub_t rsp_sub;
+	struct diag_event_mask_config_sub_t rsp_sub = {0};
 	struct diag_event_mask_config_sub_t *req_sub;
 	struct diag_mask_info *mask_info = NULL;
 	struct diag_md_session_t *info = NULL;
@@ -1606,7 +1606,7 @@ static int diag_cmd_toggle_events(unsigned char *src_buf, int src_len,
 	int write_len = 0, i, peripheral;
 	int sub_index = INVALID_INDEX, preset = 0, ret = -EINVAL;
 	uint8_t toggle = 0;
-	struct diag_event_report_t header;
+	struct diag_event_report_t header = {0};
 	struct diag_mask_info *mask_info = NULL;
 	struct diag_md_session_t *info = NULL;
 	struct diag_event_mask_req_sub_t *req = NULL;
@@ -1717,9 +1717,9 @@ static int diag_cmd_get_log_mask(unsigned char *src_buf, int src_len,
 	uint32_t mask_size = 0, equip_id;
 	struct diag_log_mask_t *log_item = NULL;
 	struct diag_log_config_get_req_t *req;
-	struct diag_log_config_rsp_t rsp;
+	struct diag_log_config_rsp_t rsp = {0};
 	struct diag_log_config_rsp_sub_t *req_sub;
-	struct diag_log_config_rsp_sub_t rsp_sub;
+	struct diag_log_config_rsp_sub_t rsp_sub = {0};
 	struct diag_mask_info *mask_info = NULL;
 	struct diag_md_session_t *info = NULL;
 	struct diag_multisim_masks *ms_ptr = NULL;
@@ -1852,8 +1852,8 @@ static int diag_cmd_get_log_range(unsigned char *src_buf, int src_len,
 {
 	int i, sub_index = INVALID_INDEX;
 	int write_len = 0;
-	struct diag_log_config_rsp_t rsp;
-	struct diag_log_config_rsp_sub_t rsp_sub;
+	struct diag_log_config_rsp_t rsp = {0};
+	struct diag_log_config_rsp_sub_t rsp_sub = {0};
 	struct diag_log_config_req_sub_t *req;
 	struct diag_log_mask_t *mask = NULL;
 	struct diag_multisim_masks *ms_ptr;
@@ -2146,8 +2146,8 @@ static int diag_cmd_disable_log_mask(unsigned char *src_buf, int src_len,
 {
 	struct diag_mask_info *mask_info = NULL;
 	struct diag_log_mask_t *mask = NULL;
-	struct diag_log_config_rsp_t header;
-	struct diag_log_config_rsp_sub_t rsp;
+	struct diag_log_config_rsp_t header = {0};
+	struct diag_log_config_rsp_sub_t rsp = {0};
 	struct diag_log_config_rsp_sub_t *req;
 	int write_len = 0, i, peripheral;
 	int preset = 0, sub_index = INVALID_INDEX, ret_val = 0;
