@@ -1314,20 +1314,22 @@ int mhi_pci_probe(struct pci_dev *pci_dev,
 		mdm2ap_gpio = of_get_named_gpio(mhi_cntrl->of_node, "mdm2ap-x65-gpio", 0);
 	}
 
-	if (ap2mdm_gpio < 0 && mdm2ap_gpio < 0)
+	if (ap2mdm_gpio < 0 && mdm2ap_gpio < 0) {
 		pr_err("AP2MDM and MDMD2AP GPIO not configured\n");
+	} else {
+		pr_debug("Acquired ssr gpios ap2mdm_gpio = %d mdm2ap_gpio = %d" ,
+			 ap2mdm_gpio, mdm2ap_gpio);
+		/*
+		 * If ap2mdm and mdm2ap are available,
+		 * then check whether to proceed in PCIE or
+		 * GPIO based SSR. Else default is PCIE based
+		 * SSR.
+		 * ssr_mode - 0-PCIE, 1-GPIO
+		 */
+		ssr_mode = (ap2mdm_gpio && mdm2ap_gpio) &&
+			   (force_pcie_ssr ? 0 : 1);
+	}
 
-	pr_debug("Acquired ssr gpios ap2mdm_gpio = %d mdm2ap_gpio = %d" ,
-			ap2mdm_gpio, mdm2ap_gpio);
-	/*
-	 * If ap2mdm and mdm2ap are available,
-	 * then check whether to proceed in PCIE or
-	 * GPIO based SSR. Else default is PCIE based
-	 * SSR.
-	 * ssr_mode - 0-PCIE, 1-GPIO
-	 */
-	ssr_mode = (ap2mdm_gpio && mdm2ap_gpio) &&
-			(force_pcie_ssr ? 0 : 1);
 	MHI_LOG(" SSR mode selected = %d", ssr_mode);
 
 	if (mhi_ssr_negotiate) {

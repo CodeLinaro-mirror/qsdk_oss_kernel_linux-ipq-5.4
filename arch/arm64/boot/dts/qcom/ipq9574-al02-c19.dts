@@ -262,14 +262,6 @@
 					bias-pull-down;
 				};
 
-				ap2mdm_status {
-					pins = "gpio42";
-					function = "gpio";
-					drive-strength = <8>;
-					bias-pull-up;
-					output-high;
-				};
-
 				mdm2ap_e911_status {
 					pins = "gpio43";
 					drive-strength = <8>;
@@ -654,9 +646,6 @@
 
 				mhi_0: qcom,mhi@0 {
 					reg = <0 0 0 0 0 >;
-
-					ap2mdm-gpio = <&tlmm 42 0>;
-					mdm2ap-gpio = <&tlmm 45 0>;
 
 					// controller specific configuration
 					qcom,iommu-dma = "disabled";
