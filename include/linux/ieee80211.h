@@ -20,6 +20,7 @@
 #include <linux/etherdevice.h>
 #include <asm/byteorder.h>
 #include <asm/unaligned.h>
+#define IEEE80211_MLD_MAX_NUM_LINKS     15
 
 /*
  * DS bit usage
