@@ -686,6 +686,7 @@
 	qcom,wsi = <&wsi>;
 	hw_link_id = <0 0>;
 	status = "ok";
+	interrupts = <0 33 1>;
 };
 
 &qcn9224_pcie1 {
