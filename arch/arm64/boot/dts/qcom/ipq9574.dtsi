@@ -1826,10 +1826,16 @@
 			qcom,smem-state-names = "shutdown",
 						"stop";
 
+			#ifdef __IPQ_MEM_PROFILE_512_MB__
+			memory-region = <&q6_region>,
+					<&m3_dump>,
+					<&q6_etr_region>;
+			#else
 			memory-region = <&q6_region>,
 					<&m3_dump>,
 					<&q6_etr_region>,
 					<&q6_caldb_region>;
+			#endif
 
 			glink-edge {
 				interrupts = <GIC_SPI 321 IRQ_TYPE_EDGE_RISING>;
