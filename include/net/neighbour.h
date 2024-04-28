@@ -38,15 +38,6 @@
 #define NUD_VALID	(NUD_PERMANENT|NUD_NOARP|NUD_REACHABLE|NUD_PROBE|NUD_STALE|NUD_DELAY)
 #define NUD_CONNECTED	(NUD_PERMANENT|NUD_NOARP|NUD_REACHABLE)
 
-/*
- * Neighbour events for notification to listening drivers
- */
-enum neigh_event_notify {
-	NEIGH_EVENT_NOTIFY_UPDATE = 0,
-	NEIGH_EVENT_NOTIFY_ADD,
-	NEIGH_EVENT_NOTIFY_DELETE,
-};
-
 struct neighbour;
 
 enum {
@@ -456,7 +447,7 @@ static inline struct neighbour * neigh_clone(struct neighbour *neigh)
 static inline int neigh_event_send(struct neighbour *neigh, struct sk_buff *skb)
 {
 	unsigned long now = jiffies;
-	
+
 	if (READ_ONCE(neigh->used) != now)
 		WRITE_ONCE(neigh->used, now);
 	if (!(neigh->nud_state&(NUD_CONNECTED|NUD_DELAY|NUD_PROBE)))
