@@ -391,6 +391,7 @@ int pci_create_scan_root_bus(struct pcie_port *pp)
 	struct dw_pcie *pci = to_dw_pcie_from_pp(pp);
 	struct device *dev = pci->dev;
 	struct pci_host_bridge *hbrg;
+	struct pci_bus *root_bus;
 
 	pci_add_resource(&res, pp->busn);
 	pci_add_resource(&res, pp->io);
@@ -402,14 +403,16 @@ int pci_create_scan_root_bus(struct pcie_port *pp)
 			return ret;
 	}
 
-	pp->root_bus_nr = pp->busn->start;
-	pp->root_bus = pci_scan_root_bus(dev,
-			pp->root_bus_nr, &dw_pcie_ops, pp, &res);
+	root_bus = pci_scan_root_bus(dev,
+			pp->busn->start, &dw_pcie_ops, pp, &res);
 
-	if (!pp->root_bus) {
+	if (!root_bus) {
 		dev_err(pci->dev, "root_bus is not created\n");
 		return -ENOMEM;
 	}
+
+	pp->root_bus_nr = pp->busn->start;
+	pp->root_bus = root_bus;
 
 	if (pp->ops->scan_bus)
 		pp->ops->scan_bus(pp);
