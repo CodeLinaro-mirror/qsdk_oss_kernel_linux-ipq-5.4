@@ -393,6 +393,10 @@ config SKB_FAST_RECYCLABLE_DEBUG_ENABLE
 	---help---
 	Enable debug API for fast recycled skbs.
 
+config SKB_TIMESTAMP
+	bool "Timestamp storage enablement in the packet"
+	default n
+
 menu "Network testing"
 
 config NET_PKTGEN
