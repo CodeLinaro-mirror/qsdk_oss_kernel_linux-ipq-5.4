@@ -652,6 +652,7 @@
 			compatible = "qcom,cnss-qcn6432" , "qcom,qcn6432-wifi";
 			interrupt-bmap = <0x100510>;
 			interrupt-names = "umac_reset";
+			interrupts = <0 33 1>;
 			msi-parent = <&v2m0>;
 			qcom,rproc = <&q6_wcss_pd2>;
 			qcom,rproc_rpd = <&q6v5_wcss>;
@@ -687,7 +688,6 @@
 	qcom,wsi = <&wsi>;
 	hw_link_id = <0 0>;
 	status = "ok";
-	interrupts = <0 33 1>;
 };
 
 &qcn9224_pcie1 {
