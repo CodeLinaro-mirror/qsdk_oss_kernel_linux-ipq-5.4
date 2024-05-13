@@ -216,6 +216,7 @@
 #define PCIE_CAP_TARGET_LINK_SPD_MASK		GENMASK(3, 0)
 #define QCOM_IPQ9574_DEVICE_ID			0x1108
 #define QCOM_IPQ5332_DEVICE_ID			0x1005
+#define QCOM_PCIE_MAX_RETRY			3
 
 struct qcom_pcie_resources_2_1_0 {
 	struct clk *iface_clk;
@@ -2214,10 +2215,24 @@ static int qcom_pcie_host_init(struct pcie_port *pp)
 {
 	struct dw_pcie *pci = to_dw_pcie_from_pp(pp);
 	struct qcom_pcie *pcie = to_qcom_pcie(pci);
-	int ret;
+	int ret, retry = 0;
 
 	if (gpiod_get_value(mdm2ap_e911))
 		return -EBUSY;
+
+retry_link:
+	if (retry >= QCOM_PCIE_MAX_RETRY)
+		return ret;
+
+	if (retry) {
+		dev_info(pci->dev, "Enumeration retry\n");
+		ret = phy_init(pcie->phy);
+		if (ret) {
+			dev_info(pci->dev, "PHY init failed on retry\n");
+			return ret;
+		}
+		msleep(100);
+	}
 
 	qcom_ep_reset_assert(pcie);
 
@@ -2258,6 +2273,11 @@ err_deinit:
 		return 0;
 
 	pcie->ops->deinit(pcie);
+
+	phy_exit(pcie->phy);
+
+	retry++;
+	goto retry_link;
 
 	return ret;
 }
