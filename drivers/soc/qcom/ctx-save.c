@@ -1111,8 +1111,7 @@ int minidump_fill_segments_internal(const uint64_t start_addr, uint64_t size, mi
 	if (ret)
 		return ret;
 
-	if (IS_ENABLED(CONFIG_ARM64) || highmem )
-		minidump_store_mmu_info(start_addr,(const unsigned long)phys_addr);
+	minidump_store_mmu_info(start_addr,(const unsigned long)phys_addr);
 
 	if (name)
 		minidump_store_module_info(name, start_addr,(const unsigned long)phys_addr, type);
