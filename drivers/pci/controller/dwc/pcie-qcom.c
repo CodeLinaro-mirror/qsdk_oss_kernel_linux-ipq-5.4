@@ -333,6 +333,7 @@ struct qcom_pcie {
 	uint32_t axi_wr_addr_halt;
 	uint32_t max_payload_size;
 	bool enable_vc;
+	bool enable_retry;
 	struct work_struct handle_wake_work;
 	struct work_struct handle_e911_work;
 	int wake_irq;
@@ -2274,10 +2275,11 @@ err_deinit:
 
 	pcie->ops->deinit(pcie);
 
-	phy_exit(pcie->phy);
-
-	retry++;
-	goto retry_link;
+	if (pcie->enable_retry) {
+		phy_exit(pcie->phy);
+		retry++;
+		goto retry_link;
+	}
 
 	return ret;
 }
@@ -2860,6 +2862,9 @@ static int qcom_pcie_probe(struct platform_device *pdev)
 
 	pcie->enable_vc = of_property_read_bool(pdev->dev.of_node,
 					"enable-virtual-channel");
+
+	pcie->enable_retry = of_property_read_bool(pdev->dev.of_node,
+						   "enable-enum-retry");
 
 	if (of_device_is_compatible(pdev->dev.of_node,
 					"qcom,pcie-gen3-ipq8074")) {
