@@ -36,6 +36,15 @@
 	spi_cs2_pins: pinmux_spi_cs2_pins {
 		pinctrl-single,bits = <0x0c 0x0b0000 0xff0000>;
 	};
+	wl_pins: pinmux_wl_pins {
+		pinctrl-single,bits = <0x0 0x350000 0xff0000>;
+	};
+	bt_active_pins: pinmux_bt_active_pins {
+		pinctrl-single,bits = <0x0 0x18 0xff>;
+	};
+	bt_pri_pins: pinmux_bt_pri_pins {
+		pinctrl-single,bits = <0x0 0x1600 0xff00>;
+	};
 };
 
 &gpio {
@@ -95,6 +104,15 @@
 &wmac {
 	status = "okay";
 	mtd-cal-data = <&art 0x1000>;
+
+	//GPIO for BT coex
+	pinctrl-names="default";
+	pinctrl-0 = <&wl_pins>,
+			<&bt_active_pins>,
+			<&bt_pri_pins>;
+	qca,bt-active-gpios = /bits/ 8 <0>; //GPIO0 for BT active
+	qca,bt-priority-gpios = /bits/ 8 <1>; //GPIO1 for BT priority
+	qca,wlan-active-gpios = /bits/ 8 <2>; //GPIO2 for WLAN active
 };
 
 &eth0 {
