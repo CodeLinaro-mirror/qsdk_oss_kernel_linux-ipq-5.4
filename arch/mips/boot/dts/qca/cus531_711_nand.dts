@@ -47,6 +47,10 @@
 	};
 };
 
+&pcie0 {
+	status = "okay";
+};
+
 &gpio {
 	spi-cs2 {
 		gpio-hog;
