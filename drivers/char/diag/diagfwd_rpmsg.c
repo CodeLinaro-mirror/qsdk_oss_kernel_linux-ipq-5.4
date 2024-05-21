@@ -671,7 +671,9 @@ static void diag_rpmsg_notify_rx_work_fn(struct work_struct *work)
 		rpmsg_info = rx_item->rpmsg_info;
 		if (!rpmsg_info) {
 			err_flag = 1;
-			goto err_handling;
+			spin_unlock_irqrestore(&read_work_struct->rx_lock,
+								flags);
+			return;
 		}
 
 		fwd_info = rpmsg_info->fwd_ctxt;
