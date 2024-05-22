@@ -1354,7 +1354,6 @@ static int qcom_pcie_init_2_5_0(struct qcom_pcie *pcie)
 	struct dw_pcie *pci = pcie->pci;
 	struct device *dev = pci->dev;
 	int i, ret;
-	u32 val;
 
 	for (i = 0; i < ARRAY_SIZE(res->rst); i++) {
 		ret = reset_control_assert(res->rst[i]);
@@ -1411,6 +1410,29 @@ static int qcom_pcie_init_2_5_0(struct qcom_pcie *pcie)
 		goto err_clk_axi_s;
 	}
 
+	return 0;
+
+err_clk_axi_s:
+	clk_disable_unprepare(res->axi_s_clk);
+err_clk_axi_m:
+	clk_disable_unprepare(res->axi_m_clk);
+err_clk_iface:
+	clk_disable_unprepare(res->iface);
+	/*
+	 * Not checking for failure, will anyway return
+	 * the original failure in 'ret'.
+	 */
+	for (i = 0; i < ARRAY_SIZE(res->rst); i++)
+		reset_control_assert(res->rst[i]);
+
+	return ret;
+}
+
+static int qcom_pcie_post_init_2_5_0(struct qcom_pcie *pcie)
+{
+	struct dw_pcie *pci = pcie->pci;
+	u32 val;
+
 	writel(SLV_ADDR_SPACE_SZ,
 		pcie->parf + PCIE20_v3_PARF_SLV_ADDR_SPACE_SIZE);
 
@@ -1450,21 +1472,6 @@ static int qcom_pcie_init_2_5_0(struct qcom_pcie *pcie)
 	qcom_pcie_set_link_speed(pci->dbi_base, pcie->max_speed, SPEED_GEN2);
 
 	return 0;
-
-err_clk_axi_s:
-	clk_disable_unprepare(res->axi_s_clk);
-err_clk_axi_m:
-	clk_disable_unprepare(res->axi_m_clk);
-err_clk_iface:
-	clk_disable_unprepare(res->iface);
-	/*
-	 * Not checking for failure, will anyway return
-	 * the original failure in 'ret'.
-	 */
-	for (i = 0; i < ARRAY_SIZE(res->rst); i++)
-		reset_control_assert(res->rst[i]);
-
-	return ret;
 }
 
 static int qcom_pcie_get_resources_2_9_0(struct qcom_pcie *pcie)
@@ -1819,7 +1826,6 @@ static int qti_pcie_init_2_9_0_9574(struct qcom_pcie *pcie)
 	struct dw_pcie *pci = pcie->pci;
 	struct device *dev = pci->dev;
 	int i, ret;
-	u32 val;
 
 	for (i = 0; i < ARRAY_SIZE(res->rst); i++) {
 		ret = reset_control_assert(res->rst[i]);
@@ -1906,6 +1912,36 @@ static int qti_pcie_init_2_9_0_9574(struct qcom_pcie *pcie)
 		}
 	}
 
+	return 0;
+
+err_clk_rchng:
+	clk_disable_unprepare(res->rchng_clk);
+err_clk_axi_bridge:
+	clk_disable_unprepare(res->axi_bridge_clk);
+err_clk_axi_s:
+	clk_disable_unprepare(res->axi_s_clk);
+err_clk_axi_m:
+	clk_disable_unprepare(res->axi_m_clk);
+err_clk_aux:
+	clk_disable_unprepare(res->aux_clk);
+err_clk_ahb:
+	clk_disable_unprepare(res->ahb_clk);
+	/*
+	 * Not checking for failure, will anyway return
+	 * the original failure in 'ret'.
+	 */
+	for (i = 0; i < ARRAY_SIZE(res->rst); i++)
+		reset_control_assert(res->rst[i]);
+
+	return ret;
+}
+
+static int qti_pcie_post_init_2_9_0_9574(struct qcom_pcie *pcie)
+{
+	struct dw_pcie *pci = pcie->pci;
+	u32 val;
+	int i;
+
 	if (pcie->slv_addr_space_sz)
 		writel(pcie->slv_addr_space_sz,
 			pcie->parf + PCIE20_v3_PARF_SLV_ADDR_SPACE_SIZE);
@@ -1983,27 +2019,6 @@ static int qti_pcie_init_2_9_0_9574(struct qcom_pcie *pcie)
 	writel(0x0, pci->atu_base + PCIE_ATU_UPPER_TARGET_OUTBOUND_7_GEN3);
 
 	return 0;
-
-err_clk_rchng:
-	clk_disable_unprepare(res->rchng_clk);
-err_clk_axi_bridge:
-	clk_disable_unprepare(res->axi_bridge_clk);
-err_clk_axi_s:
-	clk_disable_unprepare(res->axi_s_clk);
-err_clk_axi_m:
-	clk_disable_unprepare(res->axi_m_clk);
-err_clk_aux:
-	clk_disable_unprepare(res->aux_clk);
-err_clk_ahb:
-	clk_disable_unprepare(res->ahb_clk);
-	/*
-	 * Not checking for failure, will anyway return
-	 * the original failure in 'ret'.
-	 */
-	for (i = 0; i < ARRAY_SIZE(res->rst); i++)
-		reset_control_assert(res->rst[i]);
-
-	return ret;
 }
 
 static int qcom_pcie_init_2_9_0(struct qcom_pcie *pcie)
@@ -2012,7 +2027,6 @@ static int qcom_pcie_init_2_9_0(struct qcom_pcie *pcie)
 	struct dw_pcie *pci = pcie->pci;
 	struct device *dev = pci->dev;
 	int i, ret;
-	u32 val;
 
 	for (i = 0; i < ARRAY_SIZE(res->rst); i++) {
 		ret = reset_control_assert(res->rst[i]);
@@ -2103,6 +2117,39 @@ static int qcom_pcie_init_2_9_0(struct qcom_pcie *pcie)
 		}
 	}
 
+	return 0;
+
+err_clk_rchng:
+	clk_disable_unprepare(res->rchng_clk);
+err_clk_axi_bridge:
+	clk_disable_unprepare(res->axi_bridge_clk);
+err_clk_axi_s:
+	clk_disable_unprepare(res->axi_s_clk);
+err_clk_axi_m:
+	clk_disable_unprepare(res->axi_m_clk);
+err_clk_aux:
+	clk_disable_unprepare(res->aux_clk);
+err_clk_ahb:
+	clk_disable_unprepare(res->ahb_clk);
+err_clk_iface:
+	if (res->iface)
+		clk_disable_unprepare(res->iface);
+	/*
+	 * Not checking for failure, will anyway return
+	 * the original failure in 'ret'.
+	 */
+	for (i = 0; i < ARRAY_SIZE(res->rst); i++)
+		reset_control_assert(res->rst[i]);
+
+	return ret;
+}
+
+static int qcom_pcie_post_init_2_9_0(struct qcom_pcie *pcie)
+{
+	struct dw_pcie *pci = pcie->pci;
+	u32 val;
+	int i;
+
 	if (pcie->slv_addr_space_sz)
 		writel(pcie->slv_addr_space_sz,
 			pcie->parf + PCIE20_v3_PARF_SLV_ADDR_SPACE_SIZE);
@@ -2170,30 +2217,6 @@ static int qcom_pcie_init_2_9_0(struct qcom_pcie *pcie)
 	writel(0x0, pci->atu_base + PCIE_ATU_UPPER_TARGET_OUTBOUND_7_GEN3);
 
 	return 0;
-
-err_clk_rchng:
-	clk_disable_unprepare(res->rchng_clk);
-err_clk_axi_bridge:
-	clk_disable_unprepare(res->axi_bridge_clk);
-err_clk_axi_s:
-	clk_disable_unprepare(res->axi_s_clk);
-err_clk_axi_m:
-	clk_disable_unprepare(res->axi_m_clk);
-err_clk_aux:
-	clk_disable_unprepare(res->aux_clk);
-err_clk_ahb:
-	clk_disable_unprepare(res->ahb_clk);
-err_clk_iface:
-	if (res->iface)
-		clk_disable_unprepare(res->iface);
-	/*
-	 * Not checking for failure, will anyway return
-	 * the original failure in 'ret'.
-	 */
-	for (i = 0; i < ARRAY_SIZE(res->rst); i++)
-		reset_control_assert(res->rst[i]);
-
-	return ret;
 }
 
 static int qcom_pcie_link_up(struct dw_pcie *pci)
@@ -2346,6 +2369,7 @@ static const struct qcom_pcie_of_data qcom_pcie_2_4_0 = {
 static const struct qcom_pcie_ops ops_2_5_0 = {
 	.get_resources = qcom_pcie_get_resources_2_5_0,
 	.init = qcom_pcie_init_2_5_0,
+	.post_init = qcom_pcie_post_init_2_5_0,
 	.deinit = qcom_pcie_deinit_2_5_0,
 	.ltssm_enable = qcom_pcie_2_3_2_ltssm_enable,
 };
@@ -2359,6 +2383,7 @@ static const struct qcom_pcie_of_data qcom_pcie_2_5_0 = {
 static const struct qcom_pcie_ops ops_2_9_0 = {
 	.get_resources = qcom_pcie_get_resources_2_9_0,
 	.init = qcom_pcie_init_2_9_0,
+	.post_init = qcom_pcie_post_init_2_9_0,
 	.deinit = qcom_pcie_deinit_2_9_0,
 	.ltssm_enable = qcom_pcie_2_3_2_ltssm_enable,
 };
@@ -2384,6 +2409,7 @@ static const struct qcom_pcie_ops ops_2_9_0_ipq5332 = {
 static const struct qcom_pcie_ops ops_2_9_0_ipq9574 = {
 	.get_resources = qti_pcie_get_resources_2_9_0_9574,
 	.init = qti_pcie_init_2_9_0_9574,
+	.post_init = qti_pcie_post_init_2_9_0_9574,
 	.deinit = qcom_pcie_deinit_2_9_0,
 	.ltssm_enable = qcom_pcie_2_3_2_ltssm_enable,
 };
