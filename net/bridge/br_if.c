@@ -802,8 +802,10 @@ struct net_device *br_port_dev_get(struct net_device *dev, unsigned char *addr,
 				   struct sk_buff *skb,
 				   unsigned int cookie)
 {
+#if !IS_ENABLED(CONFIG_BRIDGE_VLAN_FILTERING)
 	struct net_bridge_fdb_entry *fdbe;
 	struct net_bridge *br;
+#endif
 	struct net_device *netdev = NULL;
 	u16 __maybe_unused vid;
 
@@ -895,7 +897,7 @@ EXPORT_SYMBOL_GPL(br_is_hairpin_enabled);
  */
 int br_port_set_sub_br_id(struct net_bridge_port *p, unsigned long new_sub_br_id)
 {
-	pr_info("Set sub br id old: %d, new: %d\n", p->sub_br_id, new_sub_br_id);
+	pr_info("Set sub br id old: %d, new: %lu\n", p->sub_br_id, new_sub_br_id);
 
 	p->sub_br_id = new_sub_br_id;
 	return 0;
@@ -906,7 +908,7 @@ int br_port_set_sub_br_id(struct net_bridge_port *p, unsigned long new_sub_br_id
  */
 int br_port_set_mac_lrn_limit(struct net_bridge_port *p, unsigned long new_mac_lrn_limit)
 {
-	pr_info("Set mac learn limit old: %d, new: %d\n", p->mac_lrn_limit, new_mac_lrn_limit);
+	pr_info("Set mac learn limit old: %d, new: %lu\n", p->mac_lrn_limit, new_mac_lrn_limit);
 
 	p->mac_lrn_limit = new_mac_lrn_limit;
 
