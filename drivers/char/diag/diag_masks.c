@@ -1069,7 +1069,7 @@ static int diag_cmd_set_msg_mask(unsigned char *src_buf, int src_len,
 	int header_len = 0, status = MSG_STATUS_FAIL;
 	struct diag_msg_mask_t *mask = NULL, *mask_next = NULL;
 	struct diag_msg_build_mask_t *req = NULL;
-	struct diag_msg_build_mask_t rsp;
+	struct diag_msg_build_mask_t rsp = {0};
 	struct diag_msg_build_mask_sub_t *req_sub = NULL;
 	struct diag_msg_build_mask_sub_t rsp_sub;
 	struct diag_mask_info *mask_info = NULL;
@@ -1927,7 +1927,7 @@ static int diag_cmd_set_log_mask(unsigned char *src_buf, int src_len,
 	struct diag_log_config_req_t *req;
 	struct diag_log_config_set_rsp_t rsp;
 	struct diag_log_config_rsp_sub_t *req_sub;
-	struct diag_log_config_rsp_sub_t rsp_sub;
+	struct diag_log_config_rsp_sub_t rsp_sub = {0};
 	struct diag_log_mask_t *mask = NULL;
 	struct diag_logging_range_t range;
 	struct diag_mask_info *mask_info = NULL;
