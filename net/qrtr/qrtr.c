@@ -748,6 +748,9 @@ static void qrtr_fwd_ctrl_pkt(struct sk_buff *skb)
 	struct qrtr_cb *cb = (struct qrtr_cb *)skb->cb;
 
 	src = qrtr_node_lookup(cb->src_node);
+	if (!src)
+		return;
+
 	down_read(&qrtr_node_lock);
 	list_for_each_entry(node, &qrtr_all_epts, item) {
 		struct sockaddr_qrtr from;
