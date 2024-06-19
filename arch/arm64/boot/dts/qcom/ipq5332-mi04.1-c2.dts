@@ -657,7 +657,7 @@
 			memory-region = <&q6_mem_regions>,
 					<&mlo_global_mem0>;
 
-#ifdef __IPQ_MEM_PROFILE_16_MB__
+#ifdef __IPQ_MEM_PROFILE_256_MB__
 			/delete-node/ remoteproc_pd1;
 			/delete-node/ remoteproc_pd2;
 
