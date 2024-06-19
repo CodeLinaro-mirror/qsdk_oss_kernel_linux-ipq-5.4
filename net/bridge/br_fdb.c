@@ -618,7 +618,7 @@ void br_fdb_update(struct net_bridge *br, struct net_bridge_port *source,
 	struct net_bridge_fdb_entry *fdb;
 	struct net_bridge_port *dst_orig;
 	bool fdb_modified = false;
-	struct br_fdb_event fdb_event;
+	struct br_fdb_event fdb_event = {0};
 
 	/* some users want to always flood. */
 	if (hold_time(br) == 0)
@@ -643,7 +643,8 @@ void br_fdb_update(struct net_bridge *br, struct net_bridge_port *source,
 			if (unlikely(source != fdb->dst && !fdb->is_sticky)) {
 				ether_addr_copy(fdb_event.addr, addr);
 				fdb_event.br = br;
-				fdb_event.orig_dev = fdb->dst->dev;
+				if (fdb->dst)
+					fdb_event.orig_dev = fdb->dst->dev;
 				fdb_event.dev = source->dev;
 				dst_orig = fdb->dst;
 				fdb->dst = source;
