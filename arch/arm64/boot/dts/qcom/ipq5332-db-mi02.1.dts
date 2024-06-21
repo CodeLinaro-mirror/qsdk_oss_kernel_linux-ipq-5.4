@@ -386,6 +386,7 @@
 			boot-args = <0x1 0x4 0x3 0x1 0x2f 0x2>;
 			memory-region = <&q6_mem_regions>;
 
+#ifdef __IPQ_MEM_PROFILE_256_MB__
 			/delete-node/ remoteproc_pd1;
 			/delete-node/ remoteproc_pd2;
 
@@ -440,7 +441,20 @@
 					status = "ok";
 				};
 			};
+#else
+			q6_wcss_pd1: remoteproc_pd1 {
+				memory-region = <&q6_ipq5332_data>, <&m3_dump>,
+					<&q6_etr_region>, <&mlo_global_mem0>;
+				status = "ok";
+			};
 
+			q6_wcss_pd2: remoteproc_pd2 {
+				iu_firmware = "qcn6432/iu_fw.mdt";
+				memory-region = <&q6_qcn6432_data_1>, <&m3_dump_qcn6432_1>,
+					<&q6_qcn6432_etr_1>, <&mlo_global_mem0>;
+				status = "ok";
+			};
+#endif
 			/delete-node/ remoteproc_pd3;
 		};
 	};
