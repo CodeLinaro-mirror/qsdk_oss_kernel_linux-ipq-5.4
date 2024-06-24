@@ -378,24 +378,24 @@ inline bool skb_recycler_consume_list_fast(struct sk_buff_head *skb_list)
 			/* We have now cleared room in the spare;
 			 * Initialize and enqueue skb into spare
 			 */
+			mem_debug_update_skb_list(skb_list); /* FIX all mem debug */
+			mem_leak_free_skb_list(skb_list);
 			skb_queue_splice_init(skb_list, h);
 
 			local_irq_restore(flags);
 			preempt_enable();
-			mem_debug_update_skb_list(skb_list); /* FIX all mem debug */
-			mem_leak_free_skb_list(skb_list);
 			return true;
 		}
 		/* We still have a full spare because the global is also full */
 		spin_unlock(&glob_recycler.lock);
 	} else {
 		/* We have room in the spare list; enqueue to spare list */
+		mem_debug_update_skb_list(skb_list);
+		mem_leak_free_skb_list(skb_list);
 		skb_queue_splice_init(skb_list, h);
 
 		local_irq_restore(flags);
 		preempt_enable();
-		mem_debug_update_skb_list(skb_list);
-		mem_leak_free_skb_list(skb_list);
 		return true;
 	}
 #endif
