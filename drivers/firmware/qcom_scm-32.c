@@ -1173,18 +1173,33 @@ int __qcom_scm_io_readl(struct device *dev, phys_addr_t addr,
 			unsigned int *val)
 {
 	int ret;
+	struct scm_desc desc = {0};
 
-	ret = qcom_scm_call_atomic1(QCOM_SCM_SVC_IO, QCOM_SCM_IO_READ, addr);
+	desc.args[0] = addr;
+	desc.arginfo = SCM_ARGS(1);
+
+	ret = qti_scm_call2(dev, SCM_SIP_FNID(QCOM_SCM_SVC_IO,
+				QCOM_SCM_IO_READ), &desc);
+
 	if (ret >= 0)
-		*val = ret;
+		*val = desc.ret[0];
 
 	return ret < 0 ? ret : 0;
 }
 
 int __qcom_scm_io_writel(struct device *dev, phys_addr_t addr, unsigned int val)
 {
-	return qcom_scm_call_atomic2(QCOM_SCM_SVC_IO, QCOM_SCM_IO_WRITE,
-				     addr, val);
+	int ret;
+	struct scm_desc desc = {0};
+
+	desc.args[0] = addr;
+	desc.args[1] = val;
+	desc.arginfo = SCM_ARGS(2);
+
+	ret = qti_scm_call2(dev, SCM_SIP_FNID(QCOM_SCM_SVC_IO,
+				QCOM_SCM_IO_WRITE), &desc);
+
+	return ret;
 }
 
 int __qti_qfprom_show_authenticate(struct device *dev, char *buf)
@@ -1433,10 +1448,16 @@ static int __qti_scm_dload_v8(struct device *dev, void *cmd_buf,
 	struct scm_desc desc = {0};
 	int ret;
 	unsigned int enable;
+	uint32_t val;
 
 	enable = cmd_buf ? *((unsigned int *)cmd_buf) : 0;
+
+	ret = qti_read_dload_reg(&val);
+	if (ret)
+		return ret;
+
 	desc.args[0] = dload_mode_addr;
-	desc.args[1] = readl(dload_reg);
+	desc.args[1] = val;
 	if (enable == SET_MAGIC_WARMRESET)
 		desc.args[1] |= DLOAD_MODE_ENABLE_WARMRESET;
 	else if (enable == ABNORMAL_MAGIC)

@@ -26,6 +26,9 @@ extern int __qcom_scm_set_cold_boot_addr(void *entry, const cpumask_t *cpus);
 #define QCOM_SCM_CMD_CORE_HOTPLUGGED	0x10
 extern void __qcom_scm_cpu_power_down(u32 flags);
 
+#define QCOM_DLOAD_READ_MODE		0x6
+#define QCOM_DLOAD_SEC_READ		0x401000
+
 #define QCOM_SCM_SVC_IO			0x5
 #define QCOM_SCM_IO_READ		0x1
 #define QCOM_SCM_IO_WRITE		0x2

@@ -878,10 +878,16 @@ int __qti_scm_dload(struct device *dev, u32 svc_id, u32 cmd_id, void *cmd_buf,
 	struct arm_smccc_res res;
 	int ret;
 	unsigned int enable;
+	uint32_t val;
 
 	enable = cmd_buf ? *((unsigned int *)cmd_buf) : 0;
+
+	ret = qti_read_dload_reg(&val);
+	if (ret)
+		return ret;
+
 	desc.args[0] = dload_mode_addr;
-	desc.args[1] = readl(dload_reg);
+	desc.args[1] = val;
 	if (enable == SET_MAGIC_WARMRESET)
 		desc.args[1] |= DLOAD_MODE_ENABLE_WARMRESET;
 	else if (enable == ABNORMAL_MAGIC)

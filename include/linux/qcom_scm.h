@@ -459,5 +459,5 @@ extern int qti_scm_int_radio_powerup(u32 peripheral);
 extern int qti_scm_int_radio_powerdown(u32 peripheral);
 extern int __qti_scm_set_trybit(struct device *dev, u32 svc_id, u32 val, u64 dload_mode_addr);
 extern int qti_scm_set_trybit(u32 svc_id);
-extern int qti_read_dload_reg(void);
+extern int qti_read_dload_reg(uint32_t *val);
 #endif
