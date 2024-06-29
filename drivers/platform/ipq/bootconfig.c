@@ -249,7 +249,11 @@ static ssize_t trybit_write(struct file *file,
 static int trybit_show(struct seq_file *m, void *v)
 {
 	uint32_t val;
-	val = qti_read_dload_reg();
+	int ret = 0;
+
+	ret = qti_read_dload_reg(&val);
+	if (ret)
+		return ret;
 	val = (val & QTI_TRYBIT) ? 1 : 0;
 
 	seq_printf(m, "%x\n", val);
