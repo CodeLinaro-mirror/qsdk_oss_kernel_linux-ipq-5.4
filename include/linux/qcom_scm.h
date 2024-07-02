@@ -24,10 +24,16 @@
 #define QTI_TRYBIT     			BIT(12)
 
 #define MAX_FUSE_ADDR_SIZE		0x8
+#define IPQ9574_MAX_FUSE_ADDR_SIZE	22
 struct fuse_payload {
 	uint32_t fuse_addr;
 	uint32_t lsb_val;
 	uint32_t msb_val;
+};
+
+struct fuse_payload_ipq9574 {
+	uint32_t fuse_addr;
+	uint32_t val;
 };
 
 enum qseecom_qceos_cmd_id {
@@ -261,8 +267,8 @@ extern int qti_scm_tls_hardening(uint32_t req_addr, uint32_t req_size,
 				 uint32_t resp_addr, uint32_t resp_size,
 				 u32 cmd_id);
 extern int qti_scm_aes(uint32_t req_addr, uint32_t req_size, u32 cmd_id);
-extern int qti_scm_get_ipq5332_fuse_list(u32 svc_id, u32 cmd_id,
-					struct fuse_payload *fuse, size_t size);
+extern int qti_scm_get_ipq_fuse_list(u32 svc_id, u32 cmd_id,
+				 void *fuse, size_t size);
 extern int qti_scm_aes_clear_key_handle(uint32_t key_handle, u32 cmd_id);
 extern int qti_scm_dload(u32 svc_id, u32 cmd_id, void *cmd_buf);
 extern int qti_scm_sdi(u32 svc_id, u32 cmd_id);

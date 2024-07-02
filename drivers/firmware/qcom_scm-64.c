@@ -1232,8 +1232,9 @@ int __qti_scm_get_ecdsa_blob(struct device *dev, u32 svc_id, u32 cmd_id,
 
 	return ret ? : res.a1;
 }
+
 /**
- * __qti_scm_get_ipq5332_fuse_list() - Get OEM Fuse parameter from TME-L
+ * __qti_scm_get_ipq_fuse_list() - Get OEM Fuse parameter from TME-L
  *
  * @svc_id: SCM service id
  * @cmd_id: SCM command id
@@ -1242,8 +1243,8 @@ int __qti_scm_get_ecdsa_blob(struct device *dev, u32 svc_id, u32 cmd_id,
  *
  * This function can be used to get the OEM Fuse parameters from TME-L.
  */
-int __qti_scm_get_ipq5332_fuse_list(struct device *dev, u32 svc_id,
-		u32 cmd_id, struct fuse_payload *fuse, size_t size)
+int __qti_scm_get_ipq_fuse_list(struct device *dev, u32 svc_id, u32 cmd_id,
+				void *fuse, size_t size)
 {
 	int ret;
 	dma_addr_t dma_fuse;
