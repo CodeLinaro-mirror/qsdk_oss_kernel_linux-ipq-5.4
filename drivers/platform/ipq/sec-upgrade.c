@@ -590,7 +590,7 @@ store_list_ipq9574_fuse(struct device *dev, struct device_attribute *attr,
 	pr_info("------------------------------------------------\n");
 
 	pr_info("TME_AUTH_EN\t0x%08X\t0x%08X\n", fuse[0].fuse_addr,
-			fuse[0].val & 0x41);
+			fuse[0].val & 0x80);
 	pr_info("TME_OEM_ID\t0x%08X\t0x%08X\n", fuse[0].fuse_addr,
 			fuse[0].val & 0xFFFF0000);
 	pr_info("TME_PRODUCT_ID\t0x%08X\t0x%08X\n", fuse[1].fuse_addr,

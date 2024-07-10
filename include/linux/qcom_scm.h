@@ -24,7 +24,7 @@
 #define QTI_TRYBIT     			BIT(12)
 
 #define MAX_FUSE_ADDR_SIZE		0x8
-#define IPQ9574_MAX_FUSE_ADDR_SIZE	22
+#define IPQ9574_MAX_FUSE_ADDR_SIZE	0x10
 struct fuse_payload {
 	uint32_t fuse_addr;
 	uint32_t lsb_val;
