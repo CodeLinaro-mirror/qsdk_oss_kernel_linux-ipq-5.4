@@ -862,6 +862,14 @@ void cfg80211_bss_expire(struct cfg80211_registered_device *rdev)
 	__cfg80211_bss_expire(rdev, jiffies - IEEE80211_SCAN_RESULT_EXPIRE);
 }
 
+void cfg80211_bss_expire_entry(struct wiphy *wiphy, unsigned long expire_time)
+{
+	struct cfg80211_registered_device *rdev = wiphy_to_rdev(wiphy);
+
+	__cfg80211_bss_expire(rdev, expire_time);
+}
+EXPORT_SYMBOL(cfg80211_bss_expire_entry);
+
 const struct element *
 cfg80211_find_elem_match(u8 eid, const u8 *ies, unsigned int len,
 			 const u8 *match, unsigned int match_len,
