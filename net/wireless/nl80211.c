@@ -15543,9 +15543,8 @@ void nl80211_send_connect_result(struct cfg80211_registered_device *rdev,
 			cr->fils.kek_len + cr->fils.pmk_len +
 			(cr->fils.pmkid ? WLAN_PMKID_LEN : 0) + link_info_size,
 			gfp);
-	if (!msg) {
+	if (!msg)
 		return;
-	}
 
 
 	hdr = nl80211hdr_put(msg, 0, 0, 0, NL80211_CMD_CONNECT);
@@ -15579,13 +15578,12 @@ void nl80211_send_connect_result(struct cfg80211_registered_device *rdev,
 	      (cr->fils.pmk &&
 	       nla_put(msg, NL80211_ATTR_PMK, cr->fils.pmk_len, cr->fils.pmk)) ||
 	      (cr->fils.pmkid &&
-	       nla_put(msg, NL80211_ATTR_PMKID, WLAN_PMKID_LEN, cr->fils.pmkid))))) {
+	       nla_put(msg, NL80211_ATTR_PMKID, WLAN_PMKID_LEN, cr->fils.pmkid)))))
 		   goto nla_put_failure;
-		}
+
 
 	if (cr->valid_links) {
 		int i = 1;
-		int k;
 		struct nlattr *nested;
 
 		nested = nla_nest_start(msg, NL80211_ATTR_MLO_LINKS);
@@ -15593,8 +15591,6 @@ void nl80211_send_connect_result(struct cfg80211_registered_device *rdev,
 			goto nla_put_failure;
 		}
 		for_each_valid_link(cr, link) {
-			if (cr->links[link].bss) {
-			}
 			struct nlattr *nested_mlo_links;
 			const u8 *bssid = cr->links[link].bss ?
 					  cr->links[link].bss->bssid :
