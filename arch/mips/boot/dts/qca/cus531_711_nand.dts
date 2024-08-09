@@ -63,6 +63,7 @@
 	status = "okay";
 	spi-bus-num = /bits/ 16 <0>;
 	spi-chipselect = /bits/ 16 <3>;
+	miso-line = <8>;
 	pinctrl-names="default";
 	pinctrl-0 = <&spi_cs2_pins>,
 			<&jtag_disable_pins>;
@@ -93,7 +94,18 @@
 		reg = <1>;
 		spi-max-frequency = <50000000>;
 	};
-
+	// enable this macro will work as a universal spi dev,
+	// and export as /dev/spi.0.2 to use by userspace
+#ifdef USERSPACE_SPI_CS2_DEV
+	spidev@2 {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		compatible = "qti,spidev";
+		reg = <2>;
+		spi-max-frequency = <20000000>;
+		spi-cpha;
+	};
+#else
 	spidev@2 {
 		#address-cells = <1>;
 		#size-cells = <1>;
@@ -103,6 +115,7 @@
 		interrupt-parent = <&gpio>;
 		interrupts = <12 IRQ_TYPE_EDGE_FALLING>;
 	};
+#endif
 };
 
 &wmac {

@@ -14,6 +14,7 @@
 #include <linux/spinlock.h>
 #include <linux/platform_device.h>
 #include <linux/io.h>
+#include <linux/gpio.h>
 #include <linux/spi/spi.h>
 #include <linux/spi/spi_bitbang.h>
 #include <linux/bitops.h>
@@ -41,6 +42,7 @@
 
 #define AR71XX_SPI_DEFAULT_BUS_NUM			0
 #define AR71XX_SPI_DEFAULT_BUSELECT_NUM		3
+#define AR71XX_SPI_DEFAULT_MISO_LINE        8
 
 struct ath79_spi {
 	struct spi_bitbang	bitbang;
@@ -49,6 +51,7 @@ struct ath79_spi {
 	void __iomem		*base;
 	struct clk		*clk;
 	unsigned int		rrw_delay;
+	u32 miso_line;
 };
 
 static inline u32 ath79_spi_rr(struct ath79_spi *sp, unsigned int reg)
@@ -94,7 +97,6 @@ static void ath79_spi_enable(struct ath79_spi *sp)
 	/* save CTRL register */
 	sp->reg_ctrl = ath79_spi_rr(sp, AR71XX_SPI_REG_CTRL);
 	sp->ioc_base = ath79_spi_rr(sp, AR71XX_SPI_REG_IOC);
-
 	/* clear clk and mosi in the base state */
 	sp->ioc_base &= ~(AR71XX_SPI_IOC_DO | AR71XX_SPI_IOC_CLK);
 
@@ -139,6 +141,39 @@ static u32 ath79_spi_txrx_mode0(struct spi_device *spi, unsigned int nsecs,
 	return ath79_spi_rr(sp, AR71XX_SPI_REG_RDS);
 }
 
+static u32 ath79_spi_txrx_mode1(struct spi_device *spi, unsigned int nsecs,
+			       u32 word, u8 bits, unsigned flags)
+{
+	struct ath79_spi *sp = ath79_spidev_to_sp(spi);
+	u32 ioc = sp->ioc_base;
+	u32 readword = 0;
+	u32 out;
+
+	/* clock starts at inactive polarity */
+	for (word <<= (32 - bits); likely(bits); bits--) {
+		out = ioc;
+
+		if (word & (1 << 31))
+			out |= AR71XX_SPI_IOC_DO;
+		else
+			out &= ~AR71XX_SPI_IOC_DO;
+
+		/* setup MSB (to slave) on trailing edge */
+		ath79_spi_wr(sp, AR71XX_SPI_REG_IOC, out | AR71XX_SPI_IOC_CLK);
+		ath79_spi_delay(sp, nsecs);
+
+		readword <<= 1;
+		readword |= gpio_get_value(sp->miso_line);
+
+		ath79_spi_wr(sp, AR71XX_SPI_REG_IOC, out);
+		ath79_spi_delay(sp, nsecs);
+
+		word <<= 1;
+	}
+
+	return readword;
+}
+
 static int ath79_spi_probe(struct platform_device *pdev)
 {
 	struct device_node *np = pdev->dev.of_node;
@@ -169,9 +204,15 @@ static int ath79_spi_probe(struct platform_device *pdev)
 		master->num_chipselect = AR71XX_SPI_DEFAULT_BUSELECT_NUM;
 	}
 
+	if (of_property_read_u32(np, "miso-line", &sp->miso_line)) {
+		dev_dbg(&pdev->dev, "no dts property for spi miso pin num, may cause spi mode1 invalid\n");
+		master->num_chipselect = AR71XX_SPI_DEFAULT_MISO_LINE;
+	}
+
 	sp->bitbang.master = master;
 	sp->bitbang.chipselect = ath79_spi_chipselect;
 	sp->bitbang.txrx_word[SPI_MODE_0] = ath79_spi_txrx_mode0;
+	sp->bitbang.txrx_word[SPI_MODE_1] = ath79_spi_txrx_mode1;
 	sp->bitbang.flags = SPI_CS_HIGH;
 
 	sp->base = devm_platform_ioremap_resource(pdev, 0);
