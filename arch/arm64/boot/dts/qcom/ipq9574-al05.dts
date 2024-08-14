@@ -47,6 +47,17 @@
 			};
 		};
 
+		edma@3ab00000 {
+			qcom,edma_loopback_ring;
+			qcom,num_loopback_rings = <1>;
+			qcom,txdesc_loopback_ring_id = <0>;
+			qcom,txcmpl_loopback_ring_id = <0>;
+			qcom,rxfill_loopback_ring_id = <0>;
+			qcom,rxdesc_loopback_ring_id = <0>;
+			qcom,loopback_queue_base = <56>;
+			qcom,loopback_num_queues = <8>;
+		};
+
 		ess-instance {
 			num_devices = <0x1>;
 			ess-switch@3a000000 {
