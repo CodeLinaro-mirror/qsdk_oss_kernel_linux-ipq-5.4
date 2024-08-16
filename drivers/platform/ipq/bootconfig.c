@@ -531,14 +531,13 @@ static const struct file_operations age_ops = {
 bool check_alt_partition(char *partition)
 {
 
-	int i;
 	char *alt_part_name;
 	uint8_t size;
 #ifdef CONFIG_MMC
 	struct gendisk *disk = NULL;
 	struct disk_part_iter piter;
 	struct hd_struct *part;
-	int partno;
+	int partno, i;
 #endif
 	struct mtd_info *mtd;
 	int alt_part = 0;
@@ -585,9 +584,9 @@ bool check_alt_partition(char *partition)
 
 		}
 	}
-#endif
 
 exit:
+#endif
 	if (alt_part_name)
 		kfree(alt_part_name);
 	return alt_part;
@@ -615,6 +614,7 @@ static int write_to_flash (struct sbl_if_dualboot_info_type_v2 *data, const char
 	if (IS_ERR(mtd)) {
 		/*Flash to EMMC*/
 
+#ifdef CONFIG_MMC
 		for (i = 0; i < MAX_MMC_DEVICE; i++) {
 
 			disk = get_gendisk(MKDEV(MMC_BLOCK_MAJOR,
@@ -639,7 +639,7 @@ static int write_to_flash (struct sbl_if_dualboot_info_type_v2 *data, const char
 
 		if(ret)
 			return ret;
-
+#endif
 	} else {
 
 		/*
