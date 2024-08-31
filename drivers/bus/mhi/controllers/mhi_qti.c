@@ -437,6 +437,22 @@ static struct mhi_channel_config mhi_sdx_mhi_channels[] = {
 		.auto_start = false,
 	},
 	{
+		.num = 103,
+		.name = "IP_HW_QDSS",
+		.num_elements =  128,
+		.event_ring = 10,
+		.dir = DMA_FROM_DEVICE,
+		.doorbell = MHI_DB_BRST_DISABLE,
+		.ee_mask = 0x4,
+		.pollcfg = 0,
+		.lpm_notify = false,
+		.offload_channel = false,
+		.doorbell_mode_switch = false,
+		.auto_queue = false,
+		.auto_start = false,
+	},
+
+	{
 		.num = 105,
 		.name = "RMNET_CTL",
 		.num_elements =  128,
@@ -547,6 +563,18 @@ static struct mhi_event_config mhi_sdx_mhi_events[] = {
 		.client_managed = true,
 		.offload_channel = false,
 	},
+
+	{
+		.num_elements = 1024,
+		.irq_moderation_ms = 5,
+		.irq = 10,
+		.channel = 103,
+		.mode = MHI_DB_BRST_DISABLE,
+		.hardware_event = true,
+		.client_managed = false,
+		.offload_channel = false,
+	},
+
 	{
 		.num_elements = 1024,
 		.irq_moderation_ms = 1,
@@ -1244,6 +1272,7 @@ int mhi_pci_probe(struct pci_dev *pci_dev,
 	if (ret)
 		goto error_init_pci;
 
+	mhi_cntrl->dev_id = pci_dev->device;
 	ret = mhi_register_controller(mhi_cntrl, &mhi_sdx_mhi_config);
 	if (ret)
 		goto error_register;
