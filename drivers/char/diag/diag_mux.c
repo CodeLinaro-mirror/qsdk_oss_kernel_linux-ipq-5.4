@@ -1,13 +1,6 @@
-/* Copyright (c) 2014-2017, 2019-2020, The Linux Foundation. All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 and
- * only version 2 as published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+// SPDX-License-Identifier: GPL-2.0-only
+/* Copyright (c) 2014-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/slab.h>
@@ -72,44 +65,24 @@ int diag_mux_init(void)
 	md_logger.mode = DIAG_MEMORY_DEVICE_MODE;
 	md_logger.log_ops = &md_log_ops;
 	diag_md_init();
+
 	/*
 	 * Set USB logging as the default logger. This is the mode
 	 * Diag should be in when it initializes.
 	 */
 	diag_mux->usb_ptr = &usb_logger;
 	diag_mux->md_ptr = &md_logger;
-
 	for (proc = 0; proc < NUM_MUX_PROC; proc++) {
 		diag_mux->logger[proc] = &usb_logger;
-		diag_mux->mode[proc] = DIAG_USB_MODE;
 		diag_mux->mux_mask[proc] = 0;
+		diag_mux->mode[proc] = DIAG_USB_MODE;
 	}
-
 	return 0;
 }
 
 void diag_mux_exit(void)
 {
 	kfree(diag_mux);
-}
-
-int diag_usb_register_ops(int proc, int ctx, struct diag_mux_ops *ops)
-{
-	int err = 0;
-
-	if (!ops)
-		return -EINVAL;
-
-	if (proc < 0 || proc >= NUM_MUX_PROC)
-		return 0;
-	usb_logger.ops[proc] = ops;
-	err = diag_usb_register(proc, ctx, ops);
-	if (err) {
-		pr_err("diag: MUX: unable to register usb operations for proc: %d, err: %d\n",
-		       proc, err);
-		return err;
-	}
-	return 0;
 }
 
 int diag_mux_register(int proc, int ctx, struct diag_mux_ops *ops)
@@ -121,12 +94,16 @@ int diag_mux_register(int proc, int ctx, struct diag_mux_ops *ops)
 
 	if (proc < 0 || proc >= NUM_MUX_PROC)
 		return 0;
-	err = diag_usb_register_ops(proc, ctx, ops);
+
+	/* Register with USB logger */
+	usb_logger.ops[proc] = ops;
+	err = diag_usb_register(proc, ctx, ops);
 	if (err) {
-		pr_err("diag: MUX: unable to register USB operations for proc: %d, err: %d\n",
-		proc, err);
+		pr_err("diag: MUX: unable to register usb operations for proc: %d, err: %d\n",
+		       proc, err);
 		return err;
 	}
+
 	md_logger.ops[proc] = ops;
 	err = diag_md_register(proc, ctx, ops);
 	if (err) {
@@ -134,6 +111,7 @@ int diag_mux_register(int proc, int ctx, struct diag_mux_ops *ops)
 		       proc, err);
 		return err;
 	}
+
 	return 0;
 }
 
