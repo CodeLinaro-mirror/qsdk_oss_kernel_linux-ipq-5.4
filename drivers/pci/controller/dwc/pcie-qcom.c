@@ -2422,7 +2422,7 @@ void pcie_remove_bus(void)
 			pcie = pcie_info->pcie;
 			if (pcie) {
 				pr_notice("---> Removing %d\n", pcie->rc_idx);
-				if (!pcie->enumerated)
+				if (!pcie->enumerated || pcie->slot_id != UINT_MAX)
 					continue;
 
 				pp = &(pcie->pci)->pp;
@@ -2491,7 +2491,7 @@ static void pcie_slot_remove(int val)
 	if (!list_empty(&qcom_pcie_list)) {
 		list_for_each_entry_safe(pcie_info, tmp, &qcom_pcie_list, node) {
 			pcie = pcie_info->pcie;
-			if (pcie && (pcie->rc_idx == val)) {
+			if (pcie && (pcie->slot_id != UINT_MAX)) {
 				if (!pcie->enumerated) {
 					pr_notice("\nPCIe: RC%d already removed\n", val);
 				}
@@ -2718,7 +2718,8 @@ static int qcom_pcie_probe(struct platform_device *pdev)
 	uint32_t slv_addr_space_sz = 0;
 	uint32_t num_lanes = 0;
 	uint32_t compliance = 0;
-	uint32_t slot_id = -1;
+	//Slot id is used only for SDX devices, only those are hotpluggable
+	uint32_t slot_id = UINT_MAX;
 	static int rc_idx;
 	struct nvmem_cell *pcie_nvmem;
 	u8 *disable_status;
