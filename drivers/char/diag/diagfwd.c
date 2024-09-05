@@ -1150,9 +1150,7 @@ int diag_process_apps_pkt(unsigned char *buf, int len, int pid)
 {
 	int i, p_mask = 0;
 	int mask_ret;
-#ifdef CONFIG_DIAG_OVER_USB
 	int ret = 0, peripheral = -EINVAL;
-#endif
 	int write_len = 0;
 	unsigned char *temp = NULL;
 	struct diag_cmd_reg_entry_t entry;
@@ -1239,7 +1237,6 @@ int diag_process_apps_pkt(unsigned char *buf, int len, int pid)
 	}
 	mutex_unlock(&driver->cmd_reg_mutex);
 
-#if defined(CONFIG_DIAG_OVER_USB)
 	if ((len >= 2 * sizeof(uint8_t)) &&
 		(*buf == DIAG_CMD_DIAG_SUBSYS) &&
 			(*(buf+1) == DIAG_SS_DIAG)) {
@@ -1350,7 +1347,6 @@ int diag_process_apps_pkt(unsigned char *buf, int len, int pid)
 		diag_update_md_clients(HDLC_SUPPORT_TYPE);
 		return 0;
 	}
-#endif
 
 	/* We have now come to the end of the function. */
 	if (chk_apps_only())
