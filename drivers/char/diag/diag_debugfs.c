@@ -23,7 +23,9 @@
 #endif
 #include "diagmem.h"
 #include "diag_dci.h"
+#ifdef CONFIG_DIAG_OVER_USB
 #include "diag_usb.h"
+#endif
 #include "diagfwd_peripheral.h"
 #include "diagfwd_socket.h"
 #include "diagfwd_rpmsg.h"
@@ -397,7 +399,7 @@ static ssize_t diag_dbgfs_read_mempool(struct file *file, char __user *ubuf,
 	kfree(buf);
 	return ret;
 }
-
+#ifdef CONFIG_DIAG_OVER_USB
 static ssize_t diag_dbgfs_read_usbinfo(struct file *file, char __user *ubuf,
 				       size_t count, loff_t *ppos)
 {
@@ -472,6 +474,7 @@ static ssize_t diag_dbgfs_read_usbinfo(struct file *file, char __user *ubuf,
 	kfree(buf);
 	return ret;
 }
+#endif
 
 static ssize_t diag_dbgfs_read_socketinfo(struct file *file, char __user *ubuf,
 					  size_t count, loff_t *ppos)
@@ -947,10 +950,11 @@ const struct file_operations diag_dbgfs_mempool_ops = {
 	.read = diag_dbgfs_read_mempool,
 };
 
+#ifdef CONFIG_DIAG_OVER_USB
 const struct file_operations diag_dbgfs_usbinfo_ops = {
 	.read = diag_dbgfs_read_usbinfo,
 };
-
+#endif
 const struct file_operations diag_dbgfs_dcistats_ops = {
 	.read = diag_dbgfs_read_dcistats,
 };
@@ -997,11 +1001,12 @@ int diag_debugfs_init(void)
 				    &diag_dbgfs_mempool_ops);
 	if (!entry)
 		goto err;
-
+#ifdef CONFIG_DIAG_OVER_USB
 	entry = debugfs_create_file("usbinfo", 0444, diag_dbgfs_dent, 0,
 				    &diag_dbgfs_usbinfo_ops);
 	if (!entry)
 		goto err;
+#endif
 
 	entry = debugfs_create_file("dci_stats", 0444, diag_dbgfs_dent, 0,
 				    &diag_dbgfs_dcistats_ops);
