@@ -1042,6 +1042,7 @@ void diag_cntl_process_read_data(struct diagfwd_info *p_info, void *buf,
 	}
 }
 
+#ifdef CONFIG_DIAG_OVER_USB
 static int diag_compute_real_time(int idx)
 {
 	int real_time = MODE_REALTIME;
@@ -1059,7 +1060,6 @@ static int diag_compute_real_time(int idx)
 		 * connection.
 		 */
 		real_time = MODE_REALTIME;
-#ifdef CONFIG_DIAG_OVER_USB
 	} else if (driver->usb_connected) {
 		/*
 		 * If USB is connected, check individual process. If Memory
@@ -1071,7 +1071,6 @@ static int diag_compute_real_time(int idx)
 			real_time = MODE_NONREALTIME;
 		else
 			real_time = MODE_REALTIME;
-#endif
 	} else {
 		/*
 		 * We come here if USB is not connected and the active
@@ -1081,6 +1080,7 @@ static int diag_compute_real_time(int idx)
 	}
 	return real_time;
 }
+#endif
 
 static void diag_create_diag_mode_ctrl_pkt(unsigned char *dest_buf,
 					   uint8_t diag_id, int real_time)
