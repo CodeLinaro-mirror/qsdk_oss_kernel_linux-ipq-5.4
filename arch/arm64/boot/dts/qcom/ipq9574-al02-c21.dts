@@ -518,20 +518,18 @@
 			pcie1_rp {
 				reg = <0 0 0 0 0>;
 
-#if defined(__CNSS2__)
-				qcom,mhi@1 {
+				wifi@1 {
 					reg = <0 0 0 0 0>;
-					qrtr_node_id = <0x31>;
-					memory-region = <0>,<&mhi_region1>;
+					qti,disable-rddm-prealloc;
+					qti,rddm-seg-len = <0x1000>;
 					boot-args = <0x2 0x4 0x34 0x3 0x0 0x0     /* MX Rail, GPIO52, Drive strength 0x3 */
 							0x4 0x4 0x18 0x3 0x0 0x0  /* RFA1p2 Rail, GPIO24, Drive strength 0x3 */
 							0x0 0x4 0x0 0x0 0x0 0x0>; /* End of arguments */
 					license-file = "";
-				};
+#if defined(__CNSS2__)
+					qrtr_node_id = <0x31>;
+					memory-region = <0>,<&mhi_region1>;
 #else
-				wifi@1 {
-					reg = <0 0 0 0 0>;
-
 				       /* qcn9224 tgt-mem-mode=0 layout - 46MB
 					* refer ipq9574-wkk-default-memory.dtsi
 					* +=========+==============+=========+
@@ -548,9 +546,9 @@
 					*/
 					memory-region = <&qcn9224_pcie1>;
 					qcom,board_id = <0x01>;
-
-				};
 #endif
+					status = "ok";
+				};
 			};
 		};
 
@@ -847,24 +845,24 @@
 	};
 };
 
-/* Enable IPQ9574 integrated radio's reserved memory */
+/* Disable IPQ9574 integrated radio's reserved memory */
 &q6_region {
-	status = "ok";
+	status = "disabled";
 };
 
 &m3_dump {
-	status = "ok";
+	status = "disabled";
 };
 
 &q6_etr_region {
-	status = "ok";
+	status = "disabled";
 };
 
 &q6_caldb_region {
-	status = "ok";
+	status = "disabled";
 };
 
-/* Enable the reserved memory regions of QCN9224 on PCIe0, PCIe2 */
+/* Enable the reserved memory regions of QCN9224 on PCIe0, PCIe1, PCIe2 */
 &qcn9224_pcie0 {
 	status = "ok";
 };
