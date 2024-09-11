@@ -449,6 +449,7 @@ u32 qca_mii_read(struct mii_bus *mii_bus, u32 reg)
 
 	return val;
 }
+EXPORT_SYMBOL_GPL(qca_mii_read);
 
 void qca_mii_write(struct mii_bus *mii_bus, u32 reg, u32 val)
 {
@@ -462,6 +463,7 @@ void qca_mii_write(struct mii_bus *mii_bus, u32 reg, u32 val)
 			break;
 	}
 }
+EXPORT_SYMBOL_GPL(qca_mii_write);
 
 static inline void qca_mht_clk_enable(struct mii_bus *mii_bus, u32 reg)
 {
