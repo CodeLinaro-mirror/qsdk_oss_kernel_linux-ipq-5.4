@@ -1267,7 +1267,7 @@ static int ch943x_probe(struct spi_device *spi, struct ch943x_devtype *devtype, 
 	int i, ret;
 	struct ch943x_port *s;
 	struct device *dev = &spi->dev;
-	u8 clkdiv = 13;
+	u8 clkdiv = 12;
 	u8 spi_contmode_reg;
 
 	/* Alloc port structure */
