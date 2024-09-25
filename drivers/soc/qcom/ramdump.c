@@ -146,6 +146,11 @@ static int ramdump_release(struct inode *inode, struct file *filep)
 		return -EINVAL;
 	}
 
+	if (rd_dev != g_rd_dev[rd_dev->index]) {
+		pr_err("%s: ERR: Invalid rd_dev\n", __func__);
+		return -ENODEV;
+	}
+
 	destroy_ramdump_device_file(rd_dev, dump_major, dump_minor);
 	complete(&rd_dev->ramdump_complete);
 	return 0;
@@ -197,6 +202,11 @@ static ssize_t ramdump_read(struct file *filep, char __user *buf, size_t count,
 	unsigned char *alignbuf = NULL, *finalbuf = NULL;
 	int ret = 0;
 	loff_t orig_pos = *pos;
+
+	if (rd_dev != g_rd_dev[rd_dev->index]) {
+		pr_err("%s: ERR: Invalid rd_dev\n", __func__);
+		return -ENODEV;
+	}
 
 	if ((filep->f_flags & O_NONBLOCK) && !rd_dev->data_ready)
 		return -EAGAIN;
