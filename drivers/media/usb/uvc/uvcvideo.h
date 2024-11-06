@@ -371,6 +371,7 @@ struct uvc_entity {
 			struct mutex event_mutex;
 			int last_event_val;
 			bool is_gpio_ready;
+			bool initialized;
 		} gpio;
 	};
 
