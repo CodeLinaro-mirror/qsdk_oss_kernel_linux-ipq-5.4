@@ -949,6 +949,8 @@ dtb-$(CONFIG_ARCH_QCOM) += \
 	ipq9574-al02-c19.dtb \
 	ipq9574-al02-c20.dtb \
 	ipq9574-al05.dtb \
+	ipq9574-al05-qca81xx.dtb \
+	ipq9574-al05-qca81xx-i2c.dtb \
 	ipq9574-al06.dtb \
 	ipq9574-db-al01-c1.dtb \
 	ipq9574-db-al01-c2.dtb \
