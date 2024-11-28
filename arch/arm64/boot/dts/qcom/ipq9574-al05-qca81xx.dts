@@ -77,3 +77,15 @@
 		};
 	};
 };
+
+/* Increase the uboot reserved memory region to 5MB, accordingly update the
+ * TZApp region as well
+ */
+
+&tzapp {
+	reg = <0x0 0x49600000 0x0 0x00600000>;
+};
+
+&uboot {
+	reg = <0x0 0x4A000000 0x0 0x00500000>;
+};
