@@ -869,6 +869,8 @@ dtb-$(CONFIG_ARCH_QCOM) += \
 	ipq5332-emulation-fbc.dtb \
 	ipq5332-emulation-ssoc.dtb \
 	ipq5332-mi01.2.dtb \
+	ipq5332-mi01.2-qca81xx.dtb \
+	ipq5332-mi01.2-qca81xx-i2c.dtb \
 	ipq5332-mi01.2-c2.dtb \
 	ipq5332-mi01.2-qcn9160-c1.dtb \
 	ipq5332-mi01.3.dtb \
