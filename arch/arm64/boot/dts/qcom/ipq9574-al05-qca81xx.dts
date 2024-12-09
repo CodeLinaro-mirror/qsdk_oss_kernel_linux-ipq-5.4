@@ -18,32 +18,13 @@
 	interrupt-parent = <&intc>;
 
 	soc {
-		pinctrl@1000000 {
-			sfp_pins: sfp_pinmux {
-				sfp_rx {
-					pins = "gpio46";
-					function = "rx1";
-					bias-disable;
-				};
-
-				sfp_tx {
-					pins = "gpio41";
-					function = "gpio";
-					drive-strength = <8>;
-					bias-pull-down;
-					output-low;
-				};
-			};
-		};
-
 		dp6 {
-			/delete-property/qcom,link-poll;
-			/delete-property/qcom,phy-mdio-addr;
+			qcom,phy-mdio-addr = <12>;
+			phy-mode = "usxgmii";
 		};
 		mdio@90000 {
 			phy5: ethernet-phy@5 {
-				reg = <30>;
-				/delete-property/ compatible;
+				reg = <12>;
 			};
 		};
 
@@ -61,15 +42,11 @@
 		ess-instance {
 			num_devices = <0x1>;
 			ess-switch@3a000000 {
-				pinctrl-0 = <&sfp_pins>;
-				pinctrl-names = "default";
-				switch_mac_mode2 = <0xe>; /* mac mode for uniphy instance2*/
-				tm_tick_mode = <2>; /* tm tick mode */
 				qcom,port_phyinfo {
 					port@5 {
 						port_id = <6>;
-						phy_address = <30>;
-						media-type = "sfp"; /* fiber mode */
+						phy_address = <12>;
+						ethernet-phy-ieee802.3-c45;
 					};
 				};
 
