@@ -28,6 +28,30 @@
 			status = "ok";
 		};
 
+		dp1 {
+			qcom,phy-mdio-addr = <12>;
+			phy-mode = "usxgmii";
+		};
+
+		mdio@90000 {
+			phy4: ethernet-phy@4 {
+				compatible ="ethernet-phy-ieee802.3-c45";
+				reg = <12>;
+			};
+		};
+
+		ess-instance {
+			ess-switch@3a000000 {
+				switch_mac_mode1 = <0xd>; /* mac mode for uniphy instance1*/
+				qcom,port_phyinfo {
+					port@1 {
+						phy_address = <12>;
+						ethernet-phy-ieee802.3-c45;
+						/delete-property/media-type;
+					};
+				};
+			};
+		};
 
 		pcie@20000000 {
 			status = "ok";

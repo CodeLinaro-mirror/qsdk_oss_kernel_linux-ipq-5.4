@@ -28,6 +28,24 @@
 			status = "ok";
 		};
 
+		dp1 {
+			phy-mode = "usxgmii";
+		};
+
+		ess-instance {
+			ess-switch@3a000000 {
+				switch_mac_mode1 = <0xd>; /* mac mode for uniphy instance1*/
+				qcom,port_phyinfo {
+					port@1 {
+						phy_address = <30>;
+						ethernet-phy-ieee802.3-c45;
+						phy-i2c-mode; /*i2c access phy*/
+						phy_i2c_address = <29>;
+						/delete-property/media-type;
+					};
+				};
+			};
+		};
 
 		pcie@20000000 {
 			status = "ok";
