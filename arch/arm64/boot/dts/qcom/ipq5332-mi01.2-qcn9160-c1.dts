@@ -287,6 +287,7 @@
 			   0x0 0x0 0x0>;
 	qcom,caldb-size = <0x500000>;
 	m3-dump-addr = <0x4f200000>;
+	qcom,pci_slot_id = <0>;
 	mem-region = <&q6_qcn9160_data_1>;
 	status = "ok";
 };
