@@ -657,8 +657,8 @@
 		};
 
 		q6v5_wcss: remoteproc@d100000 {
-			boot-args = <0x1 0x5 0x3 0x0 0x26 0x2 0x0>,
-					<0x1 0x5 0x4 0x2 0x2C 0x0 0x0>;
+			boot-args = <0x1 0x5 0x3 0x2 0x2C 0x0 0x0>,
+					<0x1 0x5 0x4 0x0 0x26 0x2 0x0>;
 			memory-region = <&q6_mem_regions>,
 					<&mlo_global_mem0>;
 
@@ -672,7 +672,7 @@
 			};
 
 			q6_wcss_pd2: remoteproc_pd2 {
-				iu_firmware = "qcn6432/iu_fw.mdt";
+				iu_firmware = "qcn9160/m3_fw.mdt";
 				memory-region = <&q6_qcn6432_data_1>,
 						<&m3_dump_qcn6432_1>,
 						<&q6_qcn6432_etr_1>,
@@ -683,7 +683,7 @@
 
 
 			q6_wcss_pd3: remoteproc_pd3 {
-				iu_firmware = "qcn9160/m3_fw.mdt";
+				iu_firmware = "qcn6432/iu_fw.mdt";
 				memory-region = <&q6_qcn9160_data_2>,
 						<&m3_dump_qcn9160_2>,
 						<&q6_qcn9160_etr_2>,
