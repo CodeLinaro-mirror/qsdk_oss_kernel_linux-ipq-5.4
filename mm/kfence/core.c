@@ -10,7 +10,6 @@
 #include <linux/atomic.h>
 #include <linux/bug.h>
 #include <linux/debugfs.h>
-#include <linux/kcsan-checks.h>
 #include <linux/kfence.h>
 #include <linux/list.h>
 #include <linux/lockdep.h>
@@ -347,7 +346,6 @@ static void *kfence_guarded_alloc(struct kmem_cache *cache, size_t size, gfp_t g
 
 static void kfence_guarded_free(void *addr, struct kfence_metadata *meta, bool zombie)
 {
-	struct kcsan_scoped_access assert_page_exclusive;
 	unsigned long flags;
 
 	raw_spin_lock_irqsave(&meta->lock, flags);
@@ -360,11 +358,6 @@ static void kfence_guarded_free(void *addr, struct kfence_metadata *meta, bool z
 		raw_spin_unlock_irqrestore(&meta->lock, flags);
 		return;
 	}
-
-	/* Detect racy use-after-free, or incorrect reallocation of this page by KFENCE. */
-	kcsan_begin_scoped_access((void *)ALIGN_DOWN((unsigned long)addr, PAGE_SIZE), PAGE_SIZE,
-				  KCSAN_ACCESS_SCOPED | KCSAN_ACCESS_WRITE | KCSAN_ACCESS_ASSERT,
-				  &assert_page_exclusive);
 
 	if (CONFIG_KFENCE_STRESS_TEST_FAULTS)
 		kfence_unprotect((unsigned long)addr); /* To check canary bytes. */
@@ -394,7 +387,6 @@ static void kfence_guarded_free(void *addr, struct kfence_metadata *meta, bool z
 	/* Protect to detect use-after-frees. */
 	kfence_protect((unsigned long)addr);
 
-	kcsan_end_scoped_access(&assert_page_exclusive);
 	if (!zombie) {
 		/* Add it to the tail of the freelist for reuse. */
 		raw_spin_lock_irqsave(&kfence_freelist_lock, flags);
@@ -795,13 +787,13 @@ bool kfence_handle_page_fault(unsigned long addr, bool is_write, struct pt_regs 
 		if (meta && READ_ONCE(meta->state) == KFENCE_OBJECT_ALLOCATED) {
 			to_report = meta;
 			/* Data race ok; distance calculation approximate. */
-			distance = addr - data_race(meta->addr + meta->size);
+			distance = addr - (meta->addr + meta->size);
 		}
 
 		meta = addr_to_metadata(addr + PAGE_SIZE);
 		if (meta && READ_ONCE(meta->state) == KFENCE_OBJECT_ALLOCATED) {
 			/* Data race ok; distance calculation approximate. */
-			if (!to_report || distance > data_race(meta->addr) - addr)
+			if (!to_report || distance > (meta->addr) - addr)
 				to_report = meta;
 		}
 
