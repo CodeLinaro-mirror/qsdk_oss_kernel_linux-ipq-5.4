@@ -18,9 +18,9 @@
 #define __exception_irq_entry	__exception
 #endif
 
-static inline u32 disr_to_esr(u64 disr)
+static inline unsigned long disr_to_esr(u64 disr)
 {
-	unsigned int esr = ESR_ELx_EC_SERROR << ESR_ELx_EC_SHIFT;
+	unsigned long esr = ESR_ELx_EC_SERROR << ESR_ELx_EC_SHIFT;
 
 	if ((disr & DISR_EL1_IDS) == 0)
 		esr |= (disr & DISR_EL1_ESR_MASK);

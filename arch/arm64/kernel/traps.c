@@ -210,7 +210,7 @@ static void arm64_show_signal(int signo, const char *str)
 	static DEFINE_RATELIMIT_STATE(rs, DEFAULT_RATELIMIT_INTERVAL,
 				      DEFAULT_RATELIMIT_BURST);
 	struct task_struct *tsk = current;
-	unsigned int esr = tsk->thread.fault_code;
+	unsigned long esr = tsk->thread.fault_code;
 	struct pt_regs *regs = task_pt_regs(tsk);
 
 	/* Leave if the signal won't be shown */
@@ -221,7 +221,7 @@ static void arm64_show_signal(int signo, const char *str)
 
 	pr_info("%s[%d]: unhandled exception: ", tsk->comm, task_pid_nr(tsk));
 	if (esr)
-		pr_cont("%s, ESR 0x%08x, ", esr_get_class_string(esr), esr);
+		pr_cont("%s, ESR 0x%016lx, ", esr_get_class_string(esr), esr);
 
 	pr_cont("%s", str);
 	print_vma_addr(KERN_CONT " in ", regs->pc);
@@ -255,7 +255,7 @@ void arm64_force_sig_ptrace_errno_trap(int errno, void __user *addr,
 
 void arm64_notify_die(const char *str, struct pt_regs *regs,
 		      int signo, int sicode, void __user *addr,
-		      int err)
+		      unsigned long err)
 {
 	if (user_mode(regs)) {
 		WARN_ON(regs != current_pt_regs());
@@ -426,7 +426,7 @@ asmlinkage void __exception do_undefinstr(struct pt_regs *regs)
 		uaccess_ttbr0_disable();			\
 	}
 
-static void user_cache_maint_handler(unsigned int esr, struct pt_regs *regs)
+static void user_cache_maint_handler(unsigned long esr, struct pt_regs *regs)
 {
 	unsigned long address;
 	int rt = ESR_ELx_SYS64_ISS_RT(esr);
@@ -465,7 +465,7 @@ static void user_cache_maint_handler(unsigned int esr, struct pt_regs *regs)
 		arm64_skip_faulting_instruction(regs, AARCH64_INSN_SIZE);
 }
 
-static void ctr_read_handler(unsigned int esr, struct pt_regs *regs)
+static void ctr_read_handler(unsigned long esr, struct pt_regs *regs)
 {
 	int rt = ESR_ELx_SYS64_ISS_RT(esr);
 	unsigned long val = arm64_ftr_reg_user_value(&arm64_ftr_reg_ctrel0);
@@ -484,7 +484,7 @@ static void ctr_read_handler(unsigned int esr, struct pt_regs *regs)
 	arm64_skip_faulting_instruction(regs, AARCH64_INSN_SIZE);
 }
 
-static void cntvct_read_handler(unsigned int esr, struct pt_regs *regs)
+static void cntvct_read_handler(unsigned long esr, struct pt_regs *regs)
 {
 	int rt = ESR_ELx_SYS64_ISS_RT(esr);
 
@@ -492,7 +492,7 @@ static void cntvct_read_handler(unsigned int esr, struct pt_regs *regs)
 	arm64_skip_faulting_instruction(regs, AARCH64_INSN_SIZE);
 }
 
-static void cntfrq_read_handler(unsigned int esr, struct pt_regs *regs)
+static void cntfrq_read_handler(unsigned long esr, struct pt_regs *regs)
 {
 	int rt = ESR_ELx_SYS64_ISS_RT(esr);
 
@@ -500,7 +500,7 @@ static void cntfrq_read_handler(unsigned int esr, struct pt_regs *regs)
 	arm64_skip_faulting_instruction(regs, AARCH64_INSN_SIZE);
 }
 
-static void mrs_handler(unsigned int esr, struct pt_regs *regs)
+static void mrs_handler(unsigned long esr, struct pt_regs *regs)
 {
 	u32 sysreg, rt;
 
@@ -511,15 +511,15 @@ static void mrs_handler(unsigned int esr, struct pt_regs *regs)
 		force_signal_inject(SIGILL, ILL_ILLOPC, regs->pc);
 }
 
-static void wfi_handler(unsigned int esr, struct pt_regs *regs)
+static void wfi_handler(unsigned long esr, struct pt_regs *regs)
 {
 	arm64_skip_faulting_instruction(regs, AARCH64_INSN_SIZE);
 }
 
 struct sys64_hook {
-	unsigned int esr_mask;
-	unsigned int esr_val;
-	void (*handler)(unsigned int esr, struct pt_regs *regs);
+	unsigned long esr_mask;
+	unsigned long esr_val;
+	void (*handler)(unsigned long esr, struct pt_regs *regs);
 };
 
 static const struct sys64_hook sys64_hooks[] = {
@@ -589,7 +589,7 @@ static void compat_set_it_state(struct pt_regs *regs, u32 it)
 	regs->pstate |= pstate_it;
 }
 
-static bool cp15_cond_valid(unsigned int esr, struct pt_regs *regs)
+static bool cp15_cond_valid(unsigned long esr, struct pt_regs *regs)
 {
 	int cond;
 
@@ -639,7 +639,7 @@ static void arm64_compat_skip_faulting_instruction(struct pt_regs *regs,
 	arm64_skip_faulting_instruction(regs, sz);
 }
 
-static void compat_cntfrq_read_handler(unsigned int esr, struct pt_regs *regs)
+static void compat_cntfrq_read_handler(unsigned long esr, struct pt_regs *regs)
 {
 	int reg = (esr & ESR_ELx_CP15_32_ISS_RT_MASK) >> ESR_ELx_CP15_32_ISS_RT_SHIFT;
 
@@ -656,7 +656,7 @@ static const struct sys64_hook cp15_32_hooks[] = {
 	{},
 };
 
-static void compat_cntvct_read_handler(unsigned int esr, struct pt_regs *regs)
+static void compat_cntvct_read_handler(unsigned long esr, struct pt_regs *regs)
 {
 	int rt = (esr & ESR_ELx_CP15_64_ISS_RT_MASK) >> ESR_ELx_CP15_64_ISS_RT_SHIFT;
 	int rt2 = (esr & ESR_ELx_CP15_64_ISS_RT2_MASK) >> ESR_ELx_CP15_64_ISS_RT2_SHIFT;
@@ -676,7 +676,7 @@ static const struct sys64_hook cp15_64_hooks[] = {
 	{},
 };
 
-asmlinkage void __exception do_cp15instr(unsigned int esr, struct pt_regs *regs)
+asmlinkage void __exception do_cp15instr(unsigned long esr, struct pt_regs *regs)
 {
 	const struct sys64_hook *hook, *hook_base;
 
@@ -716,7 +716,7 @@ asmlinkage void __exception do_cp15instr(unsigned int esr, struct pt_regs *regs)
 }
 #endif
 
-asmlinkage void __exception do_sysinstr(unsigned int esr, struct pt_regs *regs)
+asmlinkage void __exception do_sysinstr(unsigned long esr, struct pt_regs *regs)
 {
 	const struct sys64_hook *hook;
 
@@ -777,7 +777,7 @@ static const char *esr_class_str[] = {
 	[ESR_ELx_EC_BRK64]		= "BRK (AArch64)",
 };
 
-const char *esr_get_class_string(u32 esr)
+const char *esr_get_class_string(unsigned long esr)
 {
 	return esr_class_str[ESR_ELx_EC(esr)];
 }
@@ -786,11 +786,11 @@ const char *esr_get_class_string(u32 esr)
  * bad_mode handles the impossible case in the exception vector. This is always
  * fatal.
  */
-asmlinkage void bad_mode(struct pt_regs *regs, int reason, unsigned int esr)
+asmlinkage void bad_mode(struct pt_regs *regs, int reason, unsigned long esr)
 {
 	console_verbose();
 
-	pr_crit("Bad mode in %s handler detected on CPU%d, code 0x%08x -- %s\n",
+	pr_crit("Bad mode in %s handler detected on CPU%d, code 0x%016lx -- %s\n",
 		handler[reason], smp_processor_id(), esr,
 		esr_get_class_string(esr));
 
@@ -802,7 +802,7 @@ asmlinkage void bad_mode(struct pt_regs *regs, int reason, unsigned int esr)
  * bad_el0_sync handles unexpected, but potentially recoverable synchronous
  * exceptions taken from EL0. Unlike bad_mode, this returns.
  */
-asmlinkage void bad_el0_sync(struct pt_regs *regs, int reason, unsigned int esr)
+asmlinkage void bad_el0_sync(struct pt_regs *regs, int reason, unsigned long esr)
 {
 	void __user *pc = (void __user *)instruction_pointer(regs);
 
@@ -823,13 +823,13 @@ asmlinkage void handle_bad_stack(struct pt_regs *regs)
 	unsigned long tsk_stk = (unsigned long)current->stack;
 	unsigned long irq_stk = (unsigned long)this_cpu_read(irq_stack_ptr);
 	unsigned long ovf_stk = (unsigned long)this_cpu_ptr(overflow_stack);
-	unsigned int esr = read_sysreg(esr_el1);
+	unsigned long esr = read_sysreg(esr_el1);
 	unsigned long far = read_sysreg(far_el1);
 
 	console_verbose();
 	pr_emerg("Insufficient stack space to handle exception!");
 
-	pr_emerg("ESR: 0x%08x -- %s\n", esr, esr_get_class_string(esr));
+	pr_emerg("ESR: 0x%016lx -- %s\n", esr, esr_get_class_string(esr));
 	pr_emerg("FAR: 0x%016lx\n", far);
 
 	pr_emerg("Task stack:     [0x%016lx..0x%016lx]\n",
@@ -850,11 +850,11 @@ asmlinkage void handle_bad_stack(struct pt_regs *regs)
 }
 #endif
 
-void __noreturn arm64_serror_panic(struct pt_regs *regs, u32 esr)
+void __noreturn arm64_serror_panic(struct pt_regs *regs, unsigned long esr)
 {
 	console_verbose();
 
-	pr_crit("SError Interrupt on CPU%d, code 0x%08x -- %s\n",
+	pr_crit("SError Interrupt on CPU%d, code 0x%016lx -- %s\n",
 		smp_processor_id(), esr, esr_get_class_string(esr));
 	if (regs)
 		__show_regs(regs);
@@ -865,9 +865,9 @@ void __noreturn arm64_serror_panic(struct pt_regs *regs, u32 esr)
 	unreachable();
 }
 
-bool arm64_is_fatal_ras_serror(struct pt_regs *regs, unsigned int esr)
+bool arm64_is_fatal_ras_serror(struct pt_regs *regs, unsigned long esr)
 {
-	u32 aet = arm64_ras_serror_get_severity(esr);
+	unsigned long aet = arm64_ras_serror_get_severity(esr);
 
 	switch (aet) {
 	case ESR_ELx_AET_CE:	/* corrected error */
@@ -897,7 +897,7 @@ bool arm64_is_fatal_ras_serror(struct pt_regs *regs, unsigned int esr)
 	}
 }
 
-asmlinkage void do_serror(struct pt_regs *regs, unsigned int esr)
+asmlinkage void do_serror(struct pt_regs *regs, unsigned long esr)
 {
 	const bool was_in_nmi = in_nmi();
 
@@ -953,7 +953,7 @@ int is_valid_bugaddr(unsigned long addr)
 	return 1;
 }
 
-static int bug_handler(struct pt_regs *regs, unsigned int esr)
+static int bug_handler(struct pt_regs *regs, unsigned long esr)
 {
 	switch (report_bug(regs->pc, regs)) {
 	case BUG_TRAP_TYPE_BUG:
@@ -985,7 +985,7 @@ static struct break_hook bug_break_hook = {
 #define KASAN_ESR_SIZE_MASK	0x0f
 #define KASAN_ESR_SIZE(esr)	(1 << ((esr) & KASAN_ESR_SIZE_MASK))
 
-static int kasan_handler(struct pt_regs *regs, unsigned int esr)
+static int kasan_handler(struct pt_regs *regs, unsigned long esr)
 {
 	bool recover = esr & KASAN_ESR_RECOVER;
 	bool write = esr & KASAN_ESR_WRITE;
@@ -1028,11 +1028,11 @@ static struct break_hook kasan_break_hook = {
  * Initial handler for AArch64 BRK exceptions
  * This handler only used until debug_traps_init().
  */
-int __init early_brk64(unsigned long addr, unsigned int esr,
+int __init early_brk64(unsigned long addr, unsigned long esr,
 		struct pt_regs *regs)
 {
 #ifdef CONFIG_KASAN_SW_TAGS
-	unsigned int comment = esr & ESR_ELx_BRK64_ISS_COMMENT_MASK;
+	unsigned long comment = esr & ESR_ELx_BRK64_ISS_COMMENT_MASK;
 
 	if ((comment & ~KASAN_BRK_MASK) == KASAN_BRK_IMM)
 		return kasan_handler(regs, esr) != DBG_HOOK_HANDLED;

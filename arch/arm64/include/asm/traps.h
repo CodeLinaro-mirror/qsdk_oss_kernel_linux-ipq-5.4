@@ -67,7 +67,7 @@ static inline int in_entry_text(unsigned long ptr)
  * errors share the same encoding as an all-zeros encoding from a CPU that
  * doesn't support RAS.
  */
-static inline bool arm64_is_ras_serror(u32 esr)
+static inline bool arm64_is_ras_serror(unsigned long esr)
 {
 	WARN_ON(preemptible());
 
@@ -87,9 +87,9 @@ static inline bool arm64_is_ras_serror(u32 esr)
  * We treat them as Uncontainable.
  * Non-RAS SError's are reported as Uncontained/Uncategorized.
  */
-static inline u32 arm64_ras_serror_get_severity(u32 esr)
+static inline u32 arm64_ras_serror_get_severity(unsigned long esr)
 {
-	u32 aet = esr & ESR_ELx_AET;
+	unsigned long aet = esr & ESR_ELx_AET;
 
 	if (!arm64_is_ras_serror(esr)) {
 		/* Not a RAS error, we can't interpret the ESR. */
@@ -108,6 +108,6 @@ static inline u32 arm64_ras_serror_get_severity(u32 esr)
 	return aet;
 }
 
-bool arm64_is_fatal_ras_serror(struct pt_regs *regs, unsigned int esr);
-void __noreturn arm64_serror_panic(struct pt_regs *regs, u32 esr);
+bool arm64_is_fatal_ras_serror(struct pt_regs *regs, unsigned long esr);
+void __noreturn arm64_serror_panic(struct pt_regs *regs, unsigned long esr);
 #endif
