@@ -2015,13 +2015,13 @@ bool cfg80211_does_bw_fit_range(const struct ieee80211_freq_range *freq_range,
 {
 	u32 start_freq_khz, end_freq_khz;
 
-	/* As 4.9GHz supports 5Mhz and 10 MHz center frequencies,
+	/* As 4.9GHz and 2.4GHz supports 5Mhz and 10 MHz center frequencies,
 	 * the offset calculation using the bw_khz may not work.
 	 * Therefore, apply center_freq_khz to start_freq_khz and
 	 * end_freq_khz directly for bw check.
 	 */
-	if (center_freq_khz >= MHZ_TO_KHZ(4940) &&
-	    center_freq_khz <= MHZ_TO_KHZ(5090)) {
+	if ((center_freq_khz >= MHZ_TO_KHZ(4940) && center_freq_khz <= MHZ_TO_KHZ(5090)) ||
+	    (center_freq_khz >= MHZ_TO_KHZ(2399) && center_freq_khz <= MHZ_TO_KHZ(2505))) {
 		start_freq_khz = center_freq_khz;
 		end_freq_khz = center_freq_khz;
 	} else {
