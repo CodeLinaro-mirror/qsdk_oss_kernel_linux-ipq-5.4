@@ -149,7 +149,7 @@ __do_kernel_fault(struct mm_struct *mm, unsigned long addr, unsigned int fsr,
 		msg = "NULL pointer dereference";
 	} else {
 		if (is_translation_fault(fsr) &&
-		    kfence_handle_page_fault(addr, is_write_fault(fsr), regs))
+		    kfence_handle_page_fault(addr, ((fsr & FSR_WRITE) && !(fsr & FSR_CM)), regs))
 			return;
 
 		msg = "paging request";

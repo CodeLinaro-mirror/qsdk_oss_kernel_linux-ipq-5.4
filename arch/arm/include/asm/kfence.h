@@ -32,9 +32,9 @@ static inline bool arch_kfence_init_pool(void)
 
 	for (addr = (unsigned long)__kfence_pool; is_kfence_address((void *)addr);
 	     addr += PAGE_SIZE) {
-		pmd = pmd_off_k(addr);
+		pmd = pmd_offset(pud_offset(pgd_offset_k(addr), addr), addr);
 
-		if (pmd_leaf(*pmd)) {
+		if (pmd_large(*pmd)) {
 			if (split_pmd_page(pmd, addr & PMD_MASK))
 				return false;
 		}
