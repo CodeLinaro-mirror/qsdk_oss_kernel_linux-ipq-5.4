@@ -1082,6 +1082,8 @@ void fuse_send_init(struct fuse_conn *fc)
 	ia->args.nocreds = true;
 	ia->args.end = process_init_reply;
 
+	fuse_print_conn_mounts(fc, "init connection");
+
 	if (fuse_simple_background(fc, &ia->args, GFP_KERNEL) != 0)
 		process_init_reply(fc, &ia->args, -ENOTCONN);
 }

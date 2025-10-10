@@ -101,6 +101,21 @@ static bool should_abort_conn_on_suspend(struct fuse_conn *fc)
 	return ret;
 }
 
+void fuse_print_conn_mounts(struct fuse_conn *fc, const char *event)
+{
+	down_read(&fc->killsb);
+	if (!fc->sb)
+		goto out;
+
+	pr_info("%s: %s, mount: %d:%d (%s%s%s)\n", current->comm, event,
+		MAJOR(fc->sb->s_dev), MINOR(fc->sb->s_dev),
+		fc->sb->s_type->name,
+		fc->sb->s_subtype ? "." : "",
+		fc->sb->s_subtype ? fc->sb->s_subtype : "");
+out:
+	up_read(&fc->killsb);
+}
+
 static int fuse_watchdog_fn(void *conn)
 {
 	struct task_struct *watchdog;
@@ -2282,6 +2297,7 @@ void fuse_abort_conn(struct fuse_conn *fc)
 {
 	struct fuse_iqueue *fiq = &fc->iq;
 
+	fuse_print_conn_mounts(fc, "abort connection");
 	terminate_fuse_watchdog(fc);
 
 	spin_lock(&fc->lock);
