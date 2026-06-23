@@ -482,8 +482,17 @@ static int elan_query_device_parameters(struct elan_tp_data *data)
 		if (error)
 			return error;
 	}
-	data->width_x = data->max_x / x_traces;
-	data->width_y = data->max_y / y_traces;
+
+	if (!x_traces || !y_traces) {
+		dev_warn(&client->dev,
+			 "invalid trace numbers: x=%u, y=%u\n",
+			 x_traces, y_traces);
+		data->width_x = 1;
+		data->width_y = 1;
+	} else {
+		data->width_x = data->max_x / x_traces;
+		data->width_y = data->max_y / y_traces;
+	}
 
 	if (device_property_read_u32(&client->dev,
 				     "touchscreen-x-mm", &x_mm) ||
@@ -497,8 +506,16 @@ static int elan_query_device_parameters(struct elan_tp_data *data)
 		data->x_res = elan_convert_resolution(hw_x_res);
 		data->y_res = elan_convert_resolution(hw_y_res);
 	} else {
-		data->x_res = (data->max_x + 1) / x_mm;
-		data->y_res = (data->max_y + 1) / y_mm;
+		if (unlikely(x_mm == 0 || y_mm == 0)) {
+			dev_warn(&client->dev,
+				 "invalid physical dimensions: x_mm=%u, y_mm=%u\n",
+				 x_mm, y_mm);
+			data->x_res = 1;
+			data->y_res = 1;
+		} else {
+			data->x_res = (data->max_x + 1) / x_mm;
+			data->y_res = (data->max_y + 1) / y_mm;
+		}
 	}
 
 	if (device_property_read_bool(&client->dev, "elan,clickpad"))
@@ -983,6 +1000,7 @@ static void elan_report_contact(struct elan_tp_data *data,
 	unsigned int pressure, mk_x, mk_y;
 	unsigned int area_x, area_y, major, minor;
 	unsigned int scaled_pressure;
+	int adj_width_x, adj_width_y;
 
 	if (contact_valid) {
 		pos_x = ((finger_data[0] & 0xf0) << 4) |
@@ -1005,8 +1023,13 @@ static void elan_report_contact(struct elan_tp_data *data,
 		 * To avoid treating large finger as palm, let's reduce the
 		 * width x and y per trace.
 		 */
-		area_x = mk_x * (data->width_x - ETP_FWIDTH_REDUCE);
-		area_y = mk_y * (data->width_y - ETP_FWIDTH_REDUCE);
+		adj_width_x = data->width_x > ETP_FWIDTH_REDUCE ?
+				data->width_x - ETP_FWIDTH_REDUCE : 0;
+		adj_width_y = data->width_y > ETP_FWIDTH_REDUCE ?
+				data->width_y - ETP_FWIDTH_REDUCE : 0;
+
+		area_x = mk_x * adj_width_x;
+		area_y = mk_y * adj_width_y;
 
 		major = max(area_x, area_y);
 		minor = min(area_x, area_y);
