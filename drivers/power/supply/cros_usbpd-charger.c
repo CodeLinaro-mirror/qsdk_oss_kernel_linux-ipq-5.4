@@ -160,6 +160,11 @@ static int cros_usbpd_charger_get_num_ports(struct charger_data *charger)
 		return ret;
 	}
 
+	if (resp.port_count > EC_USB_PD_MAX_PORTS) {
+		dev_warn(charger->dev, "Charge port count out of bounds\n");
+		return EC_USB_PD_MAX_PORTS;
+	}
+
 	return resp.port_count;
 }
 
@@ -174,6 +179,11 @@ static int cros_usbpd_charger_get_usbpd_num_ports(struct charger_data *charger)
 		dev_err(charger->dev,
 			"Unable to get the number or ports (err:0x%x)\n", ret);
 		return ret;
+	}
+
+	if (resp.num_ports > EC_USB_PD_MAX_PORTS) {
+		dev_warn(charger->dev, "USB PD port count out of bounds\n");
+		return EC_USB_PD_MAX_PORTS;
 	}
 
 	return resp.num_ports;
