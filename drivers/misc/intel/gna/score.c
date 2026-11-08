@@ -262,6 +262,16 @@ err_put_pages_decr:
 	i--;
 	buffer--;
 err_put_pages:
+	/*
+	 * gna_mmu_add() has already installed the buffers processed so far
+	 * into the device-global page tables. Zero those entries and reset
+	 * filled_pts/filled_pages/vamaxaddr before the pages are unmapped
+	 * and released below, so the next request does not append after
+	 * stale entries pointing at freed pages. This is done even if a
+	 * memory object can no longer be found in the idr below.
+	 */
+	gna_mmu_clear(gna_priv);
+
 	do {
 		mutex_lock(&gna_priv->memidr_lock);
 		mo = idr_find(&gna_priv->memory_idr, buffer->memory_id);
