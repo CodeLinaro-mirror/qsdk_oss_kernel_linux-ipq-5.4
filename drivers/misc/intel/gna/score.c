@@ -88,6 +88,7 @@ static int gna_mem_patch_memory(struct gna_private *gna_priv, struct gna_buffer 
 {
 	struct gna_memory_patch *patch;
 	struct gna_memory_object *mo;
+	unsigned int npages;
 	void *vaddr;
 	int ret = 0;
 	u32 i;
@@ -108,7 +109,8 @@ static int gna_mem_patch_memory(struct gna_private *gna_priv, struct gna_buffer 
 		return ret;
 
 	if (buffer->patch_count) {
-		vaddr = vm_map_ram(mo->pages, mo->num_pinned, 0, PAGE_KERNEL);
+		npages = mo->num_pinned;
+		vaddr = vm_map_ram(mo->pages, npages, 0, PAGE_KERNEL);
 		if (!vaddr)
 			return -ENOMEM;
 
@@ -121,7 +123,8 @@ static int gna_mem_patch_memory(struct gna_private *gna_priv, struct gna_buffer 
 
 		kvfree((void *)(uintptr_t)buffer->patches_ptr);
 		buffer->patches_ptr = 0;
-		vm_unmap_ram(vaddr, mo->num_pages);
+		/* must match the count passed to vm_map_ram() */
+		vm_unmap_ram(vaddr, npages);
 
 		if (ret)
 			return ret;
@@ -164,6 +167,7 @@ static int gna_copy_gmm_config(struct gna_private *gna_priv,
 	struct gna_memory_object *mo;
 	struct gna_mmu_object *mmu;
 	struct gna_buffer *buffer;
+	unsigned int npages;
 	u32 memory_offset;
 	u32 skip_offset;
 	u8 *gmm_desc;
@@ -186,7 +190,8 @@ static int gna_copy_gmm_config(struct gna_private *gna_priv,
 		return -EFAULT;
 	}
 
-	vaddr = vm_map_ram(mo->pages, mo->num_pinned, 0, PAGE_KERNEL);
+	npages = mo->num_pinned;
+	vaddr = vm_map_ram(mo->pages, npages, 0, PAGE_KERNEL);
 	if (!vaddr) {
 		dev_dbg(gna_dev(gna_priv), "mapping failed\n");
 		return -EFAULT;
@@ -195,7 +200,8 @@ static int gna_copy_gmm_config(struct gna_private *gna_priv,
 	skip_offset = round_down(buffer->offset, PAGE_SIZE);
 	gmm_desc = (u8 *)vaddr + skip_offset + (mmu_offset - memory_offset);
 	memcpy(&hwdesc->xnn_config, gmm_desc, sizeof(struct gna_xnn_descriptor));
-	vm_unmap_ram(vaddr, mo->num_pages);
+	/* must match the count passed to vm_map_ram() */
+	vm_unmap_ram(vaddr, npages);
 
 	return 0;
 }
