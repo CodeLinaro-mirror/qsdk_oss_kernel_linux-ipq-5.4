@@ -350,6 +350,17 @@ static struct ipu_psys_kcmd *ipu_psys_copy_cmd(struct ipu_psys_command *cmd,
 		if (!kcmd->kbufs[i] || !kcmd->kbufs[i]->sgt ||
 		    kcmd->kbufs[i]->len < kcmd->buffers[i].bytes_used)
 			goto error;
+		/*
+		 * data_offset is added to the buffer's IOVA at
+		 * ipu_psys_ppg_get_bufset() time with no bound of its own;
+		 * validate it here against the mapped buffer's own length so
+		 * it can never push the firmware's DMA target outside the
+		 * buffer the caller actually mapped.
+		 */
+		if (kcmd->kbufs[i]->len < kcmd->buffers[i].data_offset ||
+		    kcmd->kbufs[i]->len - kcmd->buffers[i].data_offset <
+		    kcmd->buffers[i].bytes_used)
+			goto error;
 		if ((kcmd->kbufs[i]->flags &
 		     IPU_BUFFER_FLAG_NO_FLUSH) ||
 		    (kcmd->buffers[i].flags &
