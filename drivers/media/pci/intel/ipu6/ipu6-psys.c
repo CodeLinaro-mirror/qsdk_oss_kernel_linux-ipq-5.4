@@ -935,6 +935,14 @@ int ipu_psys_fh_deinit(struct ipu_psys_fh *fh)
 			kppg->kpg->pg_size = 0;
 			spin_unlock_irqrestore(&psys->pgs_lock, flags);
 
+			/*
+			 * kppg may still be linked on the scheduler's module-global
+			 * start_list or stop_list; unlink it before freeing so the
+			 * next scheduler pass can never dereference this freed kppg.
+			 */
+			ipu_psys_scheduler_remove_kppg(kppg, SCHED_START_LIST);
+			ipu_psys_scheduler_remove_kppg(kppg, SCHED_STOP_LIST);
+
 			mutex_destroy(&kppg->mutex);
 			kfree(kppg->manifest);
 			kfree(kppg);
